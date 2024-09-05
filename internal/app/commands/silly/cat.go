@@ -27,54 +27,52 @@ func (c *CatCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *CatCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		// Fetch the cat image
-		resp, err := http.Get("https://some-random-api.com/img/cat")
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Failed to fetch cat image",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-		defer resp.Body.Close()
-
-		// Decode the response
-		var jsonResponse map[string]any
-		if err = json.NewDecoder(resp.Body).Decode(&jsonResponse); err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Failed to decode the response",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Extract the image URL
-		url, ok := jsonResponse["link"].(string)
-		if !ok {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Failed to parse the response",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Respond to the interaction
+func (c *CatCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// Fetch the cat image
+	resp, err := http.Get("https://some-random-api.com/img/cat")
+	if err != nil {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: url,
+				Content: "Failed to fetch cat image",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
+		return
 	}
+	defer resp.Body.Close()
+
+	// Decode the response
+	var jsonResponse map[string]any
+	if err = json.NewDecoder(resp.Body).Decode(&jsonResponse); err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Failed to decode the response",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Extract the image URL
+	url, ok := jsonResponse["link"].(string)
+	if !ok {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Failed to parse the response",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Respond to the interaction
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: url,
+		},
+	})
 }

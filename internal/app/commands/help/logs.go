@@ -34,31 +34,29 @@ func (c *LogsCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *LogsCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Find the Minecraft Logs",
-						Description: fmt.Sprintf("%s The logs guide explains how to find and share your Minecraft logs, please read it.", targetMember.Mention()),
-						Color:       common.EmbedColor,
-					},
+func (c *LogsCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Find the Minecraft Logs",
+					Description: fmt.Sprintf("%s The logs guide explains how to find and share your Minecraft logs, please read it.", targetMember.Mention()),
+					Color:       common.EmbedColor,
 				},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label: "Guide",
-								Style: discordgo.LinkButton,
-								URL:   "https://meteorclient.com/faq/getting-log",
-							},
+			},
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label: "Guide",
+							Style: discordgo.LinkButton,
+							URL:   "https://meteorclient.com/faq/getting-log",
 						},
 					},
 				},
 			},
-		})
-	}
+		},
+	})
 }

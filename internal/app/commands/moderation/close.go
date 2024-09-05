@@ -26,70 +26,68 @@ func (c *CloseCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *CloseCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if i.Member.Permissions&common.ManageThreadsPermission != common.ManageThreadsPermission {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "You do not have the required permissions to close threads.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Check if the command was used in a forum channel
-		channel, err := s.State.Channel(i.ChannelID)
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "An error occurred while fetching the channel.",
-				},
-			})
-			return
-		}
-		if channel.Type != discordgo.ChannelTypeGuildForum {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "This command can only be used in forum channels.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		locked := true
-		archived := true
-		_, err = s.ChannelEdit(i.ChannelID, &discordgo.ChannelEdit{
-			Locked:   &locked,
-			Archived: &archived,
-		})
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "An error occurred while closing the thread.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Respond to the interaction
+func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if i.Member.Permissions&common.ManageThreadsPermission != common.ManageThreadsPermission {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Thread Closed",
-						Description: "This thread is now locked.",
-						Color:       common.EmbedColor,
-					},
-				},
+				Content: "You do not have the required permissions to close threads.",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
+		return
 	}
+
+	// Check if the command was used in a forum channel
+	channel, err := s.State.Channel(i.ChannelID)
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "An error occurred while fetching the channel.",
+			},
+		})
+		return
+	}
+	if channel.Type != discordgo.ChannelTypeGuildForum {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "This command can only be used in forum channels.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	locked := true
+	archived := true
+	_, err = s.ChannelEdit(i.ChannelID, &discordgo.ChannelEdit{
+		Locked:   &locked,
+		Archived: &archived,
+	})
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "An error occurred while closing the thread.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Respond to the interaction
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Thread Closed",
+					Description: "This thread is now locked.",
+					Color:       common.EmbedColor,
+				},
+			},
+		},
+	})
 }

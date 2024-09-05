@@ -34,31 +34,29 @@ func (c *FaqCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *FaqCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Read the FAQ",
-						Description: fmt.Sprintf("%s The FAQ answers your question, please read it.", targetMember.Mention()),
-						Color:       common.EmbedColor,
-					},
+func (c *FaqCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Read the FAQ",
+					Description: fmt.Sprintf("%s The FAQ answers your question, please read it.", targetMember.Mention()),
+					Color:       common.EmbedColor,
 				},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label: "FAQ",
-								Style: discordgo.LinkButton,
-								URL:   "https://meteorclient.com/faq",
-							},
+			},
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label: "FAQ",
+							Style: discordgo.LinkButton,
+							URL:   "https://meteorclient.com/faq",
 						},
 					},
 				},
 			},
-		})
-	}
+		},
+	})
 }

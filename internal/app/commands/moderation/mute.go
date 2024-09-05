@@ -51,107 +51,105 @@ func (c *MuteCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *MuteCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if i.Member.Permissions&common.ModerateMembersPermission != common.ModerateMembersPermission {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "You do not have the required permissions to mute members.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-		durationStr := i.ApplicationCommandData().Options[1].StringValue()
-		duration, err := parseDuration(durationStr)
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Invalid duration format. Please use the format `1s`, `1m`, `1h`, `1d`, or `1w`.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Fetch optional arguments
-		reason := "Reason unspecified"
-		for _, opt := range i.ApplicationCommandData().Options {
-			if opt.Name == "reason" {
-				reason = opt.StringValue()
-				break
-			}
-		}
-
-		targetGuildMember, err := s.GuildMember(targetMember.ID, i.GuildID)
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "An error occurred while fetching the member.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Check if the member is already muted
-		if targetGuildMember.CommunicationDisabledUntil != nil && targetGuildMember.CommunicationDisabledUntil.After(time.Now()) {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Member is already muted.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Check if the target member cannot be muted
-		if targetGuildMember.Permissions&common.ModerateMembersPermission == common.ModerateMembersPermission {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "You do not have the required permissions to mute this member.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Mute the member
-		muteUntil := time.Now().Add(duration)
-		err = s.GuildMemberTimeout(i.GuildID, targetMember.ID, &muteUntil, discordgo.WithAuditLogReason(reason))
-		if err != nil {
-			c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "An error occurred while muting the member.",
-					Flags:   discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		// Respond to the interaction
+func (c *MuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if i.Member.Permissions&common.ModerateMembersPermission != common.ModerateMembersPermission {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Member Muted",
-						Description: fmt.Sprintf("Muted %s for %s.", targetMember.Mention(), durationStr),
-						Color:       common.EmbedColor,
-					},
-				},
+				Content: "You do not have the required permissions to mute members.",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
-
+		return
 	}
+
+	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
+	durationStr := i.ApplicationCommandData().Options[1].StringValue()
+	duration, err := parseDuration(durationStr)
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Invalid duration format. Please use the format `1s`, `1m`, `1h`, `1d`, or `1w`.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Fetch optional arguments
+	reason := "Reason unspecified"
+	for _, opt := range i.ApplicationCommandData().Options {
+		if opt.Name == "reason" {
+			reason = opt.StringValue()
+			break
+		}
+	}
+
+	targetGuildMember, err := s.GuildMember(targetMember.ID, i.GuildID)
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "An error occurred while fetching the member.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Check if the member is already muted
+	if targetGuildMember.CommunicationDisabledUntil != nil && targetGuildMember.CommunicationDisabledUntil.After(time.Now()) {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Member is already muted.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Check if the target member cannot be muted
+	if targetGuildMember.Permissions&common.ModerateMembersPermission == common.ModerateMembersPermission {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "You do not have the required permissions to mute this member.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Mute the member
+	muteUntil := time.Now().Add(duration)
+	err = s.GuildMemberTimeout(i.GuildID, targetMember.ID, &muteUntil, discordgo.WithAuditLogReason(reason))
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "An error occurred while muting the member.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Respond to the interaction
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Member Muted",
+					Description: fmt.Sprintf("Muted %s for %s.", targetMember.Mention(), durationStr),
+					Color:       common.EmbedColor,
+				},
+			},
+		},
+	})
+
 }
 
 // parseDuration parses the duration string and return the time.Duration value

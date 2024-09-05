@@ -10,18 +10,15 @@ var (
 	BanMemberPermission       int64 = dg.PermissionBanMembers
 	ManageThreadsPermission   int64 = dg.PermissionManageThreads
 
-	EmbedColor int = 0x913de2
+	EmbedColor = 0x913de2
 )
-
-// CommandHandler type alias for the Command.Handler function
-type CommandHandler func(s *dg.Session, i *dg.InteractionCreate)
 
 // Command interface for all slash commands
 type Command interface {
-	Name() string                  // Returns the name of the command
-	Description() string           // Returns the description of the command
-	Build() *dg.ApplicationCommand // Builds the command
-	Handler() CommandHandler       // Func called when command is triggered
+	Name() string                                  // Returns the name of the command
+	Description() string                           // Returns the description of the command
+	Build() *dg.ApplicationCommand                 // Builds the command
+	Handle(s *dg.Session, i *dg.InteractionCreate) // Func called when command is triggered
 	HandleInteractionRespond(s *dg.Session, i *dg.InteractionCreate, resp *dg.InteractionResponse)
 }
 

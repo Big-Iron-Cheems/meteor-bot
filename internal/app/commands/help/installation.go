@@ -34,31 +34,29 @@ func (c *InstallationCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *InstallationCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Read the Installation Guide",
-						Description: fmt.Sprintf("%s The installation guide answers your question, please read it.", targetMember.Mention()),
-						Color:       common.EmbedColor,
-					},
+func (c *InstallationCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Read the Installation Guide",
+					Description: fmt.Sprintf("%s The installation guide answers your question, please read it.", targetMember.Mention()),
+					Color:       common.EmbedColor,
 				},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label: "Guide",
-								Style: discordgo.LinkButton,
-								URL:   "https://meteorclient.com/faq/installation",
-							},
+			},
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label: "Guide",
+							Style: discordgo.LinkButton,
+							URL:   "https://meteorclient.com/faq/installation",
 						},
 					},
 				},
 			},
-		})
-	}
+		},
+	})
 }

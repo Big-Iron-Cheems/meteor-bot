@@ -27,18 +27,16 @@ func (c *MonkeyCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *MonkeyCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		w := rand.Intn(801) + 200
-		h := rand.Intn(801) + 200
+func (c *MonkeyCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	w := rand.Intn(801) + 200
+	h := rand.Intn(801) + 200
 
-		url := fmt.Sprintf("https://www.placemonkeys.com/%d/%d?random", w, h)
+	url := fmt.Sprintf("https://www.placemonkeys.com/%d/%d?random", w, h)
 
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: url,
-			},
-		})
-	}
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: url,
+		},
+	})
 }

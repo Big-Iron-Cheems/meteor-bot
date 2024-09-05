@@ -56,7 +56,7 @@ func Init(s *discordgo.Session) {
 func initCommands(cmds ...common.Command) {
 	for _, cmd := range cmds {
 		commands = append(commands, cmd.Build())
-		commandHandlers[cmd.Name()] = cmd.Handler()
+		commandHandlers[cmd.Name()] = cmd.Handle
 	}
 }
 

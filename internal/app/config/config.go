@@ -18,11 +18,12 @@ type Env struct {
 	MemberCountId   string // ID of the member count channel
 	DownloadCountId string // ID of the download count channel
 	UptimeUrl       string // URL for the uptime monitor
+	EnableLogFile   bool   // Enable logging to a file
 }
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-		log.Panic().Err(err).Msg("Error loading .env file")
+		log.Warn().Err(err).Msg("Error loading .env file")
 	}
 
 	GlobalConfig = Env{
@@ -34,5 +35,6 @@ func init() {
 		MemberCountId:   os.Getenv("MEMBER_COUNT_ID"),
 		DownloadCountId: os.Getenv("DOWNLOAD_COUNT_ID"),
 		UptimeUrl:       os.Getenv("UPTIME_URL"),
+		EnableLogFile:   os.Getenv("ENABLE_LOG_FILE") == "true",
 	}
 }

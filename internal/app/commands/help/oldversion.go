@@ -34,31 +34,29 @@ func (c *OldVersionCommand) Build() *discordgo.ApplicationCommand {
 	}
 }
 
-func (c *OldVersionCommand) Handler() common.CommandHandler {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "Old Versions Guide",
-						Description: fmt.Sprintf("%s The old version guide explains how to play on older versions of Minecraft, please read it.", targetMember.Mention()),
-						Color:       common.EmbedColor,
-					},
+func (c *OldVersionCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
+	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Old Versions Guide",
+					Description: fmt.Sprintf("%s The old version guide explains how to play on older versions of Minecraft, please read it.", targetMember.Mention()),
+					Color:       common.EmbedColor,
 				},
-				Components: []discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label: "Guide",
-								Style: discordgo.LinkButton,
-								URL:   "https://meteorclient.com/faq/old-versions",
-							},
+			},
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label: "Guide",
+							Style: discordgo.LinkButton,
+							URL:   "https://meteorclient.com/faq/old-versions",
 						},
 					},
 				},
 			},
-		})
-	}
+		},
+	})
 }
