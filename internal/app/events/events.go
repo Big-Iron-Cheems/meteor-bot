@@ -45,7 +45,7 @@ func Init(s *discordgo.Session) {
 func registerEventHandlers(s *discordgo.Session) {
 	var err error
 	if config.GlobalConfig.CopeNnId != "" {
-		copeEmoji, err = s.GuildEmoji(config.GlobalConfig.GuildId, config.GlobalConfig.CopeNnId)
+		copeEmoji, err = applicationEmoji(s, config.GlobalConfig.ApplicationId, config.GlobalConfig.CopeNnId)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get emoji")
 		}
@@ -251,6 +251,18 @@ func metricsDisconnectHandler(_ *discordgo.Session, _ *discordgo.Disconnect) {
 			log.Info().Msg("Metrics server shutdown gracefully")
 		}
 	}
+}
+
+// applicationEmoji fetches an emoji from the application
+func applicationEmoji(s *discordgo.Session, applicationID string, emojiID string, options ...discordgo.RequestOption) (emoji *discordgo.Emoji, err error) {
+	var body []byte
+	body, err = s.RequestWithBucketID("GET", discordgo.EndpointApplication(applicationID)+"/emojis/"+emojiID, nil, discordgo.EndpointApplication(applicationID), options...)
+	if err != nil {
+		return
+	}
+
+	err = discordgo.Unmarshal(body, &emoji)
+	return
 }
 
 // updateChannel updates the channel name with the given supplier function

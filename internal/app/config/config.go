@@ -13,6 +13,7 @@ type Env struct {
 	DiscordToken    string // Discord bot token
 	ApiBase         string // Base URL for the API
 	BackendToken    string // Backend token
+	ApplicationId   string // ID of the application
 	GuildId         string // ID of the guild where the bot is running
 	CopeNnId        string // ID of the CopeNN emoji
 	MemberCountId   string // ID of the member count channel
@@ -30,6 +31,7 @@ func init() {
 		DiscordToken:    os.Getenv("DISCORD_TOKEN"),
 		ApiBase:         os.Getenv("API_BASE"),
 		BackendToken:    os.Getenv("BACKEND_TOKEN"),
+		ApplicationId:   os.Getenv("APPLICATION_ID"),
 		GuildId:         os.Getenv("GUILD_ID"),
 		CopeNnId:        os.Getenv("COPE_NN_ID"),
 		MemberCountId:   os.Getenv("MEMBER_COUNT_ID"),
