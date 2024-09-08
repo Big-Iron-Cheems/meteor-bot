@@ -60,23 +60,6 @@ func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 		return
 	}
 
-	locked := true
-	archived := true
-	_, err = s.ChannelEdit(i.ChannelID, &discordgo.ChannelEdit{
-		Locked:   &locked,
-		Archived: &archived,
-	})
-	if err != nil {
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "An error occurred while closing the thread.",
-				Flags:   discordgo.MessageFlagsEphemeral,
-			},
-		})
-		return
-	}
-
 	// Respond to the interaction
 	c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -90,4 +73,22 @@ func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 			},
 		},
 	})
+
+	// Close the thread
+	locked := true
+	archived := true
+	_, err = s.ChannelEditComplex(i.ChannelID, &discordgo.ChannelEdit{
+		Locked:   &locked,
+		Archived: &archived,
+	})
+	if err != nil {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "An error occurred while closing the thread.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
 }
