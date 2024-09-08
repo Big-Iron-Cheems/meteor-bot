@@ -27,17 +27,6 @@ func (c *CloseCommand) Build() *discordgo.ApplicationCommand {
 }
 
 func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.Permissions&common.ManageThreadsPermission == 0 {
-		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "You do not have the required permissions to close threads.",
-				Flags:   discordgo.MessageFlagsEphemeral,
-			},
-		})
-		return
-	}
-
 	// Check if the command was used in a forum channel
 	channel, err := s.State.Channel(i.ChannelID)
 	if err != nil {
@@ -54,6 +43,18 @@ func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "This command can only be used in forum channels.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Check if the user has the required permissions, or is the thread owner
+	if i.Member.Permissions&common.ManageThreadsPermission == 0 && i.Member.User.ID != channel.OwnerID {
+		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "You do not have the required permissions to close threads.",
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
