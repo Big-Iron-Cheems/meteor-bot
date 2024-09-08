@@ -36,7 +36,7 @@ func (c *BanCommand) Build() *discordgo.ApplicationCommand {
 }
 
 func (c *BanCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.Permissions&common.BanMemberPermission != common.BanMemberPermission {
+	if i.Member.Permissions&common.BanMemberPermission == 0 {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{

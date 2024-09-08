@@ -27,7 +27,7 @@ func (c *CloseCommand) Build() *discordgo.ApplicationCommand {
 }
 
 func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.Permissions&common.ManageThreadsPermission != common.ManageThreadsPermission {
+	if i.Member.Permissions&common.ManageThreadsPermission == 0 {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{

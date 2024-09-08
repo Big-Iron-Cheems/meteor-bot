@@ -37,7 +37,7 @@ func (c *UnmuteCommand) Build() *discordgo.ApplicationCommand {
 }
 
 func (c *UnmuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.Permissions&common.ModerateMembersPermission != common.ModerateMembersPermission {
+	if i.Member.Permissions&common.ModerateMembersPermission == 0 {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -49,8 +49,8 @@ func (c *UnmuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 
 	targetMember := i.ApplicationCommandData().Options[0].UserValue(s)
-	targetGuildMember, err := s.GuildMember(targetMember.ID, i.GuildID)
-	if err != nil {
+	targetGuildMember, ok := i.ApplicationCommandData().Resolved.Members[targetMember.ID]
+	if !ok {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -74,7 +74,7 @@ func (c *UnmuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 
 	// Unmute the member
-	err = s.GuildMemberTimeout(i.GuildID, targetMember.ID, nil)
+	err := s.GuildMemberTimeout(i.GuildID, targetMember.ID, nil)
 	if err != nil {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,

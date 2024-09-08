@@ -52,7 +52,7 @@ func (c *MuteCommand) Build() *discordgo.ApplicationCommand {
 }
 
 func (c *MuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.Permissions&common.ModerateMembersPermission != common.ModerateMembersPermission {
+	if i.Member.Permissions&common.ModerateMembersPermission == 0 {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -86,8 +86,8 @@ func (c *MuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 		}
 	}
 
-	targetGuildMember, err := s.GuildMember(targetMember.ID, i.GuildID)
-	if err != nil {
+	targetGuildMember, ok := i.ApplicationCommandData().Resolved.Members[targetMember.ID]
+	if !ok {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -111,7 +111,7 @@ func (c *MuteCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 
 	// Check if the target member cannot be muted
-	if targetGuildMember.Permissions&common.ModerateMembersPermission == common.ModerateMembersPermission {
+	if targetGuildMember.Permissions&common.ModerateMembersPermission != 0 {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
