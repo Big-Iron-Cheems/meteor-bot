@@ -49,7 +49,7 @@ func (c *CloseCommand) Handle(s *discordgo.Session, i *discordgo.InteractionCrea
 		})
 		return
 	}
-	if channel.Type != discordgo.ChannelTypeGuildForum {
+	if !channel.IsThread() {
 		c.HandleInteractionRespond(s, i, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
