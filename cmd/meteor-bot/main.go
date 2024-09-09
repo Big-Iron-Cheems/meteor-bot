@@ -4,6 +4,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/rs/zerolog/log"
 	"meteor-bot/internal/app/commands"
+	"meteor-bot/internal/app/common"
 	"meteor-bot/internal/app/config"
 	"meteor-bot/internal/app/events"
 	"os"
@@ -11,8 +12,12 @@ import (
 )
 
 func main() {
-	// Close the log file when the program exits
-	defer config.CloseLogFile()
+	// Initialize the logger
+	common.InitLogger()
+	defer common.CloseLogger()
+
+	// Initialize config
+	config.Init()
 
 	// Create a new Discord session
 	s, err := discordgo.New("Bot " + config.GlobalConfig.DiscordToken)

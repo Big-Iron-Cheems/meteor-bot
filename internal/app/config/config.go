@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -22,9 +23,13 @@ type Env struct {
 	EnableLogFile   bool   // Enable logging to a file
 }
 
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Warn().Err(err).Msg("Error loading .env file")
+func Init() {
+	if _, err := os.Stat(".env"); errors.Is(err, os.ErrNotExist) {
+		log.Warn().Msg(".env file not found, using current environment")
+	} else {
+		if err := godotenv.Load(); err != nil {
+			log.Panic().Err(err).Msg("Error loading .env file")
+		}
 	}
 
 	GlobalConfig = Env{
@@ -39,4 +44,6 @@ func init() {
 		UptimeUrl:       os.Getenv("UPTIME_URL"),
 		EnableLogFile:   os.Getenv("ENABLE_LOG_FILE") == "true",
 	}
+
+	log.Info().Msg("Config initialized")
 }

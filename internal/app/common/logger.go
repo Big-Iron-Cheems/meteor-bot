@@ -1,19 +1,21 @@
-package config
+package common
 
 import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"meteor-bot/internal/app/config"
 	"os"
 	"path"
+	"time"
 )
 
 // logFile is the file to write logs to
 var logFile *os.File
 
-func init() {
+func InitLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	if GlobalConfig.EnableLogFile {
+	if config.GlobalConfig.EnableLogFile {
 		var err error
 		logFile, err = os.OpenFile(
 			path.Join("logs", "meteor-bot.log"),
@@ -30,13 +32,16 @@ func init() {
 		// Set the default logger to write to both console and file
 		log.Logger = zerolog.New(multi).With().Timestamp().Logger()
 	} else {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.TimeOnly,
+		})
 	}
-	log.Debug().Msg("Logger initialized")
+
+	log.Info().Msg("Logger initialized")
 }
 
-// CloseLogFile closes the log file
-func CloseLogFile() {
+func CloseLogger() {
 	if logFile != nil {
 		if err := logFile.Close(); err != nil {
 			log.Error().Err(err).Msg("Failed to close log file")
