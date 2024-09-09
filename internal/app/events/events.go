@@ -17,8 +17,11 @@ import (
 )
 
 const (
-	// infoChannel update period
+	// infoChannelHandler update period
 	updatePeriod = 6 * time.Minute
+
+	// uptimeReadyHandler request interval
+	uptimeInterval = 60 * time.Second
 )
 
 var (
@@ -152,7 +155,7 @@ func uptimeReadyHandler(s *discordgo.Session, _ *discordgo.Ready) {
 	}
 
 	// Send an uptime request every 60 seconds
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(uptimeInterval)
 	go func() {
 		for {
 			select {
@@ -171,6 +174,8 @@ func uptimeReadyHandler(s *discordgo.Session, _ *discordgo.Ready) {
 			}
 		}
 	}()
+
+	log.Info().Msgf("Sending uptime requests every %.0f seconds", uptimeInterval.Seconds())
 }
 
 // infoChannelHandler updates the member count and download count channels
@@ -213,12 +218,20 @@ func infoChannelHandler(s *discordgo.Session, _ *discordgo.Ready) {
 			return 0
 		}
 
-		return stats["downloads"].(int64)
+		downloads, ok := stats["downloads"].(float64)
+		if !ok {
+			log.Error().Msg("Failed to assert downloads as float64")
+			return 0
+		}
+
+		return int64(downloads)
 	})
 
 	updateChannel(s, memberCountChannel, func() int64 {
-		return int64(guild.MemberCount)
+		return int64(guildMemberCount(s, guild.ID))
 	})
+
+	log.Info().Msgf("Updating info channels every %.0f seconds", updatePeriod.Seconds())
 }
 
 // metricsReadyHandler starts the metrics server
@@ -230,7 +243,9 @@ func metricsReadyHandler(s *discordgo.Session, _ *discordgo.Ready) {
 		return
 	}
 
-	http.HandleFunc("/metrics", onRequest)
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		onRequest(s, w, r)
+	})
 	metricsServer = &http.Server{Addr: ":9400"}
 
 	go func() {
@@ -304,12 +319,12 @@ func formatLong(value int64) string {
 }
 
 // onRequest handles the metrics request
-func onRequest(w http.ResponseWriter, _ *http.Request) {
+func onRequest(s *discordgo.Session, w http.ResponseWriter, _ *http.Request) {
 	response := fmt.Sprintf(
 		`# HELP meteor_discord_users_total Total number of Discord users in our server
 # TYPE meteor_discord_users_total gauge
 meteor_discord_users_total %d`,
-		guild.MemberCount)
+		guildMemberCount(s, guild.ID))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
@@ -317,4 +332,26 @@ meteor_discord_users_total %d`,
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to write response")
 	}
+}
+
+// guildMemberCount returns the number of members in the guild
+// NOTE: this is a workaround for discordgo.Session#GuildMembers returning a wrong structure
+func guildMemberCount(s *discordgo.Session, guildID string) int {
+	count := 0
+	after := ""
+
+	for {
+		users, err := s.GuildMembers(guildID, after, 1000)
+		if err != nil {
+			log.Panic().Err(err).Msg("Error getting guild members")
+		}
+		usrCount := len(users)
+		if usrCount == 0 {
+			break
+		}
+		count += usrCount
+		after = users[usrCount-1].User.ID
+	}
+
+	return count
 }
