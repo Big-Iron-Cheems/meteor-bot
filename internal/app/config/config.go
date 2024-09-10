@@ -21,6 +21,7 @@ type Env struct {
 	DownloadCountId string // ID of the download count channel
 	UptimeUrl       string // URL for the uptime monitor
 	EnableLogFile   bool   // Enable logging to a file
+	RemoveCommands  bool   // Whether to remove commands on exit
 }
 
 func Init() {
@@ -43,6 +44,7 @@ func Init() {
 		DownloadCountId: os.Getenv("DOWNLOAD_COUNT_ID"),
 		UptimeUrl:       os.Getenv("UPTIME_URL"),
 		EnableLogFile:   os.Getenv("ENABLE_LOG_FILE") == "true",
+		RemoveCommands:  os.Getenv("REMOVE_COMMANDS") == "true",
 	}
 
 	log.Info().Msg("Config initialized")

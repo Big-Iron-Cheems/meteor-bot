@@ -47,5 +47,9 @@ func main() {
 	log.Info().Msg("Press Ctrl+C to exit")
 	<-stop
 
+	if config.GlobalConfig.RemoveCommands {
+		commands.RemoveCommands(s)
+	}
+
 	log.Info().Msg("Gracefully shutting down.")
 }

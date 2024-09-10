@@ -7,7 +7,6 @@ import (
 	"meteor-bot/internal/app/commands/moderation"
 	"meteor-bot/internal/app/commands/silly"
 	"meteor-bot/internal/app/common"
-	"meteor-bot/internal/app/config"
 )
 
 var (
@@ -63,10 +62,19 @@ func initCommands(cmds ...common.Command) {
 // registerCommands registers the commands to the Discord API
 func registerCommands(s *discordgo.Session) {
 	var err error
-	registeredCommands, err = s.ApplicationCommandBulkOverwrite(s.State.User.ID, config.GlobalConfig.GuildId, commands)
+	registeredCommands, err = s.ApplicationCommandBulkOverwrite(s.State.User.ID, "", commands)
 	if err != nil {
 		log.Panic().Err(err).Msg("Cannot register commands")
 	}
 
 	log.Info().Msgf("%d commands registered successfully", len(registeredCommands))
+}
+
+// RemoveCommands removes the commands from the Discord API
+func RemoveCommands(s *discordgo.Session) {
+	log.Info().Msgf("Removing %d commands...", len(registeredCommands))
+	_, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, "", nil)
+	if err != nil {
+		log.Panic().Err(err).Msg("Cannot remove commands")
+	}
 }
