@@ -1,8 +1,6 @@
-use crate::commands::get_commands;
 use crate::config::CONFIG;
 use poise::{serenity_prelude as serenity, FrameworkError};
 use serenity::{ClientBuilder, GatewayIntents, GuildId};
-use tokio::signal;
 
 mod commands;
 mod config;
@@ -20,7 +18,7 @@ pub struct Data {
 #[tokio::main]
 async fn main() {
     let options = poise::FrameworkOptions {
-        commands: get_commands(),
+        commands: commands::get_commands(),
         on_error: |error: FrameworkError<'_, Data, Error>| {
             Box::pin(async move {
                 match error {
@@ -48,14 +46,8 @@ async fn main() {
                 println!("Executed command {}!", ctx.command().qualified_name);
             })
         },
-        event_handler: |_ctx, event, _framework, _data| {
-            Box::pin(async move {
-                println!(
-                    "Got an event in event handler: {:?}",
-                    event.snake_case_name()
-                );
-                Ok(())
-            })
+        event_handler: |ctx, event, framework, data| {
+            Box::pin(async move { events::event_handler(ctx, event, framework, data).await })
         },
         ..Default::default()
     };
@@ -68,8 +60,6 @@ async fn main() {
         .options(options)
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                println!("Logged in as {}", _ready.user.name);
-
                 // Register commands
                 let num_commands = framework.options().commands.len();
                 if let Some(guild_id) = CONFIG.guild_id.parse::<u64>().ok().map(GuildId::new) {
@@ -103,7 +93,7 @@ async fn main() {
                 eprintln!("Client error: {:?}", err);
             }
         }
-        _ = signal::ctrl_c() => {
+        _ = tokio::signal::ctrl_c() => {
             println!("\nReceived CTRL+C, shutting down gracefully...");
             client.shard_manager.shutdown_all().await;
         }
