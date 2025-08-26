@@ -1,22 +1,19 @@
 use crate::{constants::EMBED_COLOR, Context, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
-use rand::Rng;
 use serde_json::Value;
 use serenity::builder::CreateEmbed;
 
-/// Sends a random panda image
+/// Sends a random capybara image
 #[poise::command(slash_command)]
-pub async fn panda(ctx: Context<'_>) -> Result<(), Error> {
-    let is_red_panda = rand::rng().random_bool(0.5);
-    let animal = if is_red_panda { "red_panda" } else { "panda" };
-    let api_url = format!("https://some-random-api.com/img/{}", animal);
+pub async fn capybara(ctx: Context<'_>) -> Result<(), Error> {
+    let api_url = "https://api.capy.lol/v1/capybara?json=true";
 
-    let resp = match reqwest::get(&api_url).await {
+    let resp = match reqwest::get(api_url).await {
         Ok(r) => r,
         Err(_) => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to fetch panda image")
+                    .content("❌ Failed to fetch capybara image")
                     .ephemeral(true),
             )
             .await?;
@@ -37,12 +34,15 @@ pub async fn panda(ctx: Context<'_>) -> Result<(), Error> {
         }
     };
 
-    let url = json.get("link").and_then(|u| u.as_str());
+    let url = json
+        .get("data")
+        .and_then(|d| d.get("url"))
+        .and_then(|u| u.as_str());
 
     match url {
         Some(url) => {
             let embed = CreateEmbed::default()
-                .title(if is_red_panda { "Red Panda!" } else { "Panda!" })
+                .title("Capybara!")
                 .color(EMBED_COLOR)
                 .image(url);
 

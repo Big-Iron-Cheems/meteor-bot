@@ -1,34 +1,36 @@
-use reqwest;
-use serde_json;
-use serenity::builder::{
-    CreateCommand, CreateInteractionResponse, CreateInteractionResponseMessage,
-};
-use serenity::model::application::InteractionResponseFlags;
-use serenity::model::application::ResolvedOption;
+use crate::{constants::EMBED_COLOR, Context, Error};
+use poise::{serenity_prelude as serenity, CreateReply};
+use serde_json::Value;
+use serenity::builder::CreateEmbed;
 
-pub fn register() -> CreateCommand {
-    CreateCommand::new("dog").description("dawg")
-}
-
-pub async fn handle(_options: &[ResolvedOption<'_>]) -> CreateInteractionResponse {
+/// Sends a random dog image
+#[poise::command(slash_command)]
+pub async fn dog(ctx: Context<'_>) -> Result<(), Error> {
     let api_url = "https://some-random-api.com/img/dog";
+
     let resp = match reqwest::get(api_url).await {
         Ok(r) => r,
         Err(_) => {
-            let data = CreateInteractionResponseMessage::new()
-                .content("Failed to fetch dog image")
-                .flags(InteractionResponseFlags::EPHEMERAL);
-            return CreateInteractionResponse::Message(data);
+            ctx.send(
+                CreateReply::default()
+                    .content("❌ Failed to fetch dog image")
+                    .ephemeral(true),
+            )
+            .await?;
+            return Ok(());
         }
     };
 
-    let json: serde_json::Value = match resp.json().await {
+    let json = match resp.json::<Value>().await {
         Ok(j) => j,
         Err(_) => {
-            let data = CreateInteractionResponseMessage::new()
-                .content("Failed to decode the response")
-                .flags(InteractionResponseFlags::EPHEMERAL);
-            return CreateInteractionResponse::Message(data);
+            ctx.send(
+                CreateReply::default()
+                    .content("❌ Failed to decode the response")
+                    .ephemeral(true),
+            )
+            .await?;
+            return Ok(());
         }
     };
 
@@ -36,14 +38,22 @@ pub async fn handle(_options: &[ResolvedOption<'_>]) -> CreateInteractionRespons
 
     match url {
         Some(url) => {
-            let data = CreateInteractionResponseMessage::new().content(url);
-            CreateInteractionResponse::Message(data)
+            let embed = CreateEmbed::default()
+                .title("Dog!")
+                .color(EMBED_COLOR)
+                .image(url);
+
+            ctx.send(CreateReply::default().embed(embed)).await?;
         }
         None => {
-            let data = CreateInteractionResponseMessage::new()
-                .content("Failed to parse the response")
-                .flags(InteractionResponseFlags::EPHEMERAL);
-            CreateInteractionResponse::Message(data)
+            ctx.send(
+                CreateReply::default()
+                    .content("❌ Failed to parse the response")
+                    .ephemeral(true),
+            )
+            .await?;
         }
     }
+
+    Ok(())
 }

@@ -1,0 +1,111 @@
+use crate::{config::CONFIG, constants::EMBED_COLOR, Context, Error};
+use poise::{serenity_prelude as serenity, CreateReply};
+use reqwest::Client;
+use serde::Deserialize;
+use serde_json::Value;
+use serenity::builder::CreateEmbed;
+use std::collections::HashMap;
+
+/// Links your Discord account to your Meteor account
+#[poise::command(slash_command, dm_only)]
+pub async fn link(
+    ctx: Context<'_>,
+    #[description = "The token generated on the Meteor website"] token: String,
+) -> Result<(), Error> {
+    if token.trim().is_empty() {
+        ctx.send(
+            CreateReply::default()
+                .content("You must provide a valid token.")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    let user_id = ctx.author().id.to_string();
+
+    match link_discord_account(&ctx.data().http_client, &user_id, &token).await {
+        Ok(()) => {
+            let embed = CreateEmbed::default()
+                .title("Account Linked")
+                .description("Successfully linked your Discord account.")
+                .color(EMBED_COLOR);
+
+            ctx.send(CreateReply::default().embed(embed).ephemeral(true))
+                .await?;
+        }
+        Err(LinkError::InvalidToken) => {
+            ctx.send(
+                CreateReply::default()
+                    .content("Failed to link your Discord account. Try generating a new token by refreshing the account page and clicking the link button again.")
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+        Err(LinkError::RequestFailed(e)) => {
+            eprintln!(
+                "Failed to link Discord account for user {}: {:?}",
+                user_id, e
+            );
+            ctx.send(
+                CreateReply::default()
+                    .content("Failed to link your Discord account. Please try again later.")
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+        Err(LinkError::DecodeFailed(e)) => {
+            eprintln!("Failed to decode response for user {}: {:?}", user_id, e);
+            ctx.send(
+                CreateReply::default()
+                    .content("Failed to decode the response.")
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct ApiResponse {
+    #[serde(flatten)]
+    data: HashMap<String, Value>,
+}
+
+#[derive(Debug)]
+enum LinkError {
+    InvalidToken,
+    RequestFailed(reqwest::Error),
+    DecodeFailed(reqwest::Error),
+}
+
+async fn link_discord_account(
+    http_client: &Client,
+    user_id: &str,
+    token: &str,
+) -> Result<(), LinkError> {
+    let api_url = format!("{}/account/linkDiscord", CONFIG.api_base);
+
+    let form_data = [("id", user_id), ("token", token)];
+
+    let resp = http_client
+        .post(&api_url)
+        .header("Authorization", &CONFIG.backend_token)
+        .form(&form_data)
+        .send()
+        .await
+        .map_err(LinkError::RequestFailed)?;
+
+    let json_response = resp
+        .json::<ApiResponse>()
+        .await
+        .map_err(LinkError::DecodeFailed)?;
+
+    if json_response.data.contains_key("error") {
+        return Err(LinkError::InvalidToken);
+    }
+
+    Ok(())
+}

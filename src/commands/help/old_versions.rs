@@ -5,21 +5,22 @@ use serenity::{
     prelude::Mentionable,
 };
 
-/// Tells someone to read the FAQ
-#[poise::command(slash_command)]
-pub async fn faq(
+/// Tells someone how to play on older versions of Minecraft
+#[poise::command(slash_command, rename = "old-versions")]
+pub async fn old_versions(
     ctx: Context<'_>,
-    #[description = "The member to tell to read the FAQ"] member: serenity::Member,
+    #[description = "The member to tell how to play on older versions of Minecraft"]
+    member: serenity::User,
 ) -> Result<(), Error> {
     let embed = CreateEmbed::default()
-        .title("Read the FAQ")
+        .title("Old Versions Guide")
         .description(format!(
-            "{} The FAQ answers your question, please read it.",
+            "{} The old version guide explains how to play on older versions of Minecraft, please read it.",
             member.mention()
         ))
         .color(EMBED_COLOR);
 
-    let button = CreateButton::new_link("https://meteorclient.com/faq").label("FAQ");
+    let button = CreateButton::new_link("https://meteorclient.com/faq/old-versions").label("Guide");
     let action_row = CreateActionRow::Buttons(vec![button]);
 
     ctx.send(
