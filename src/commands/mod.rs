@@ -3,11 +3,10 @@ mod moderation;
 mod silly;
 mod utility;
 
-use crate::commands::help::*;
-use crate::commands::moderation::*;
-use crate::commands::silly::*;
-use crate::commands::utility::*;
-use crate::{Data, Error};
+use crate::{
+    commands::{help::*, moderation::*, silly::*, utility::*}, Data,
+    Error,
+};
 use poise::Command;
 
 pub fn get_commands() -> Vec<Command<Data, Error>> {
