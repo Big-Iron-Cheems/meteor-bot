@@ -1,6 +1,11 @@
 use crate::config::CONFIG;
 use poise::{serenity_prelude as serenity, FrameworkError};
-use serenity::{ClientBuilder, GatewayIntents, GuildId};
+use serenity::{
+    all::{ShardId, ShardRunnerInfo}, ClientBuilder, GatewayIntents,
+    GuildId,
+};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 mod commands;
 mod config;
@@ -13,6 +18,8 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 pub struct Data {
     /// Shared HTTP client
     pub http_client: reqwest::Client,
+    /// Shard runners information
+    pub shard_runners: Arc<Mutex<HashMap<ShardId, ShardRunnerInfo>>>,
 }
 
 #[tokio::main]
@@ -52,10 +59,6 @@ async fn main() {
         ..Default::default()
     };
 
-    let data = Data {
-        http_client: reqwest::Client::new(),
-    };
-
     let framework = poise::Framework::builder()
         .options(options)
         .setup(move |ctx, _ready, framework| {
@@ -74,6 +77,11 @@ async fn main() {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                     println!("Registered {} global slash commands", num_commands);
                 }
+
+                let data = Data {
+                    http_client: reqwest::Client::new(),
+                    shard_runners: framework.shard_manager().runners.clone(),
+                };
 
                 Ok(data)
             })
