@@ -9,7 +9,6 @@ use tokio::sync::{watch, watch::Receiver, Mutex};
 
 mod commands;
 mod config;
-mod constants;
 mod events;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;

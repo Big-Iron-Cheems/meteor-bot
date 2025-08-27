@@ -1,4 +1,4 @@
-use crate::{constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Context, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{builder::CreateEmbed, builder::EditThread, model::channel::ChannelType};
 

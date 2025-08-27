@@ -1,4 +1,4 @@
-use crate::{config::CONFIG, constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, config::CONFIG, Context, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use reqwest::Client;
 use serde::Deserialize;
