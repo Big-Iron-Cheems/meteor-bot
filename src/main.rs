@@ -5,7 +5,7 @@ use serenity::{
     GuildId,
 };
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use tokio::sync::{watch, watch::Receiver, Mutex};
 
 mod commands;
 mod config;
@@ -20,10 +20,15 @@ pub struct Data {
     pub http_client: reqwest::Client,
     /// Shard runners information
     pub shard_runners: Arc<Mutex<HashMap<ShardId, ShardRunnerInfo>>>,
+    /// Shutdown signal for background tasks
+    pub shutdown_rx: Receiver<bool>,
 }
 
 #[tokio::main]
 async fn main() {
+    // Channel to signal shutdown to background tasks
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+
     let options = poise::FrameworkOptions {
         commands: commands::get_commands(),
         on_error: |error: FrameworkError<'_, Data, Error>| {
@@ -78,9 +83,11 @@ async fn main() {
                     println!("Registered {} global slash commands", num_commands);
                 }
 
+                // Initialize shared data
                 let data = Data {
                     http_client: reqwest::Client::new(),
                     shard_runners: framework.shard_manager().runners.clone(),
+                    shutdown_rx,
                 };
 
                 Ok(data)
@@ -103,6 +110,7 @@ async fn main() {
         }
         _ = tokio::signal::ctrl_c() => {
             println!("\nReceived CTRL+C, shutting down gracefully...");
+            let _ = shutdown_tx.send(true);
             client.shard_manager.shutdown_all().await;
         }
     }

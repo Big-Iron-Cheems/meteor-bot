@@ -10,7 +10,7 @@ use serenity::{
     Message,
 };
 use std::{future::Future, time::Duration};
-use tokio::{net::TcpListener, time};
+use tokio::{net::TcpListener, sync::watch::Receiver, time};
 
 static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
 static UPTIME_INTERVAL: Duration = Duration::from_secs(60); // 60 seconds
@@ -40,7 +40,7 @@ pub async fn event_handler(
                 info_channel_ready_handler(ctx, data),
             )
             .await;
-            log_err("metrics_handler", metrics_ready_handler(ctx)).await;
+            log_err("metrics_handler", metrics_ready_handler(ctx, data)).await;
         }
         FullEvent::GuildMemberAddition { new_member } => {
             log_err("user_joined_handler", user_joined_handler(data, new_member)).await;
@@ -173,46 +173,49 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
-    let uptime_url = &CONFIG.uptime_url;
+    let uptime_url = CONFIG.uptime_url.clone();
+    let mut shutdown_rx = data.shutdown_rx.clone();
 
     tokio::spawn(async move {
         let mut interval = time::interval(UPTIME_INTERVAL);
 
         loop {
-            interval.tick().await;
+            tokio::select! {
+                _ = interval.tick() => {
+                    // Compute average latency across shards
+                    let latency_ms = {
+                        let runners_map = shard_runners.lock().await;
+                        let valid_latencies = runners_map
+                            .values()
+                            .filter_map(|r| r.latency)
+                            .map(|d| d.as_millis())
+                            .collect::<Vec<u128>>();
 
-            // Compute average latency across shards that have a value
-            let latency_ms = {
-                let runners_map = shard_runners.lock().await;
-                let valid_latencies = runners_map
-                    .values()
-                    .filter_map(|r| r.latency)
-                    .map(|d| d.as_millis())
-                    .collect::<Vec<u128>>();
+                        if valid_latencies.is_empty() {
+                            0
+                        } else {
+                            valid_latencies.iter().sum::<u128>() / valid_latencies.len() as u128
+                        }
+                    };
 
-                if valid_latencies.is_empty() {
-                    0 // no latency data yet
-                } else {
-                    valid_latencies.iter().sum::<u128>() / valid_latencies.len() as u128
+                    let url = if uptime_url.ends_with("ping=") {
+                        format!("{}{}", uptime_url, latency_ms)
+                    } else {
+                        uptime_url.clone()
+                    };
+
+                    if let Err(e) = http_client.get(&url).send().await {
+                        eprintln!("Failed to send uptime request: {}", e);
+                    }
                 }
-            };
-
-            let url = if uptime_url.ends_with("ping=") {
-                format!("{}{}", uptime_url, latency_ms)
-            } else {
-                uptime_url.clone()
-            };
-
-            if let Err(e) = http_client.get(&url).send().await {
-                eprintln!("Failed to send uptime request: {}", e);
+                _ = shutdown_rx.changed() => {
+                    println!("uptime_ready_handler shutting down...");
+                    break;
+                }
             }
         }
     });
 
-    println!(
-        "Sending uptime requests every {} seconds",
-        UPTIME_INTERVAL.as_secs()
-    );
     Ok(())
 }
 
@@ -247,23 +250,33 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
         .ok_or("Invalid download count channel ID")?;
 
     // Download count updater
-    spawn_updater(ctx.clone(), download_count_id, {
-        let http_client = data.http_client.clone();
-        move || {
-            let http_client = http_client.clone();
-            async move { get_download_count(&http_client).await.ok() }
-        }
-    })
+    spawn_updater(
+        ctx.clone(),
+        download_count_id,
+        {
+            let http_client = data.http_client.clone();
+            move || {
+                let http_client = http_client.clone();
+                async move { get_download_count(&http_client).await.ok() }
+            }
+        },
+        data.shutdown_rx.clone(),
+    )
     .await;
 
     // Member count updater
-    spawn_updater(ctx.clone(), member_count_id, {
-        let ctx = ctx.clone();
-        move || {
+    spawn_updater(
+        ctx.clone(),
+        member_count_id,
+        {
             let ctx = ctx.clone();
-            async move { ctx.cache.guild(guild_id).map(|g| g.member_count as i64) }
-        }
-    })
+            move || {
+                let ctx = ctx.clone();
+                async move { ctx.cache.guild(guild_id).map(|g| g.member_count as i64) }
+            }
+        },
+        data.shutdown_rx.clone(),
+    )
     .await;
 
     println!(
@@ -273,19 +286,31 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
     Ok(())
 }
 
-async fn spawn_updater<F, Fut>(ctx: Context, channel_id: ChannelId, mut get_count: F)
-where
+/// Spawn a task to periodically update a channel name with a count
+async fn spawn_updater<F, Fut>(
+    ctx: Context,
+    channel_id: ChannelId,
+    mut get_count: F,
+    mut shutdown_rx: Receiver<bool>,
+) where
     F: FnMut() -> Fut + Send + 'static,
     Fut: Future<Output = Option<i64>> + Send,
 {
     tokio::spawn(async move {
         let mut interval = time::interval(UPDATE_PERIOD);
-        loop {
-            interval.tick().await;
 
-            if let Some(count) = get_count().await {
-                if let Err(e) = update_channel_name(&ctx, channel_id, count).await {
-                    eprintln!("Failed to update channel {:?}: {}", channel_id, e);
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    if let Some(count) = get_count().await {
+                        if let Err(e) = update_channel_name(&ctx, channel_id, count).await {
+                            eprintln!("Failed to update channel {:?}: {}", channel_id.get(), e);
+                        }
+                    }
+                }
+                _ = shutdown_rx.changed() => {
+                    println!("info_channel_ready_handler (ID: {:?}) shutting down...", channel_id.get());
+                    break;
                 }
             }
         }
@@ -320,7 +345,7 @@ async fn update_channel_name(
 }
 
 /// Start metrics server for Prometheus
-async fn metrics_ready_handler(ctx: &Context) -> Result<(), Error> {
+async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
     let guild_id = CONFIG
         .guild_id
         .parse::<u64>()
@@ -328,7 +353,6 @@ async fn metrics_ready_handler(ctx: &Context) -> Result<(), Error> {
         .map(GuildId::new)
         .ok_or("Invalid guild ID")?;
 
-    // Check if guild exists
     if ctx.cache.guild(guild_id).is_none() {
         println!("Guild not found in cache, metrics server will not be started");
         return Ok(());
@@ -343,8 +367,15 @@ async fn metrics_ready_handler(ctx: &Context) -> Result<(), Error> {
     let listener = TcpListener::bind("0.0.0.0:9400").await?;
     println!("Providing metrics on :9400/metrics");
 
+    let mut shutdown_rx = data.shutdown_rx.clone();
     tokio::spawn(async move {
-        if let Err(e) = axum::serve(listener, app).await {
+        if let Err(e) = axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.changed().await;
+                println!("metrics_ready_handler shutting down...");
+            })
+            .await
+        {
             eprintln!("Metrics server error: {}", e);
         }
     });
