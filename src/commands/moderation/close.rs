@@ -33,7 +33,8 @@ pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
             eprintln!("Error locking thread {}: {:?}", channel.id, e);
             ctx.send(
                 CreateReply::default()
-                    .content("Failed to lock/archive: this thread may already be archived."),
+                    .content("Failed to lock/archive: this thread may already be archived.")
+                    .ephemeral(true),
             )
             .await?;
         }
