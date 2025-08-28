@@ -1,17 +1,64 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
-use serenity::{builder::CreateEmbed, model::guild::Member, prelude::Mentionable, EditMember};
+use serenity::{
+    model::{guild::Member, user::User}, prelude::Mentionable,
+    CreateEmbed,
+    EditMember,
+};
+
+#[derive(poise::Modal)]
+#[name = "Unmute"]
+struct UnmuteModal {
+    #[name = "Reason"]
+    #[placeholder = "Enter the reason for the unmute"]
+    #[paragraph]
+    reason: Option<String>,
+}
+
+/// Context menu command for unmuting a user
+#[poise::command(
+    context_menu_command = "Unmute",
+    category = "Moderation",
+    guild_only,
+    default_member_permissions = "MODERATE_MEMBERS"
+)]
+pub async fn menu_unmute(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
+    let guild = app_ctx.guild().ok_or("Not in a guild")?.to_owned();
+    let member = guild.member(&app_ctx.serenity_context(), user.id).await?;
+
+    let response: Option<UnmuteModal> = poise::execute_modal(app_ctx, None, None).await?;
+    if let Some(response) = response {
+        do_unmute(app_ctx.into(), &member, response.reason).await?;
+    } else {
+        poise::Context::Application(app_ctx)
+            .send(
+                CreateReply::default()
+                    .content("Unmute cancelled.")
+                    .ephemeral(true),
+            )
+            .await?;
+    }
+    Ok(())
+}
 
 /// Unmutes a member
 #[poise::command(
     slash_command,
+    category = "Moderation",
     guild_only,
     default_member_permissions = "MODERATE_MEMBERS"
 )]
 pub async fn unmute(
-    ctx: Context<'_>,
+    ctx: Ctx<'_>,
     #[description = "The member to unmute"] member: Member,
+    #[description = "The reason for the unmute"] reason: Option<String>,
 ) -> Result<(), Error> {
+    do_unmute(ctx, &member, reason).await?;
+    Ok(())
+}
+
+/// Shared unmute logic
+async fn do_unmute(ctx: Ctx<'_>, member: &Member, reason: Option<String>) -> Result<(), Error> {
     if member.communication_disabled_until.is_none() {
         ctx.send(
             CreateReply::default()
@@ -22,13 +69,17 @@ pub async fn unmute(
         return Ok(());
     }
 
+    let reason = reason.unwrap_or_else(|| "Reason unspecified".to_string());
+
     match ctx
         .guild_id()
         .unwrap()
         .edit_member(
             &ctx.http(),
             member.user.id,
-            EditMember::new().enable_communication(),
+            EditMember::new()
+                .enable_communication()
+                .audit_log_reason(&reason),
         )
         .await
     {

@@ -1,4 +1,4 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
@@ -6,9 +6,9 @@ use serenity::{
 };
 
 /// Tells someone to read the installation guide
-#[poise::command(slash_command)]
+#[poise::command(slash_command, category = "Help")]
 pub async fn installation(
-    ctx: Context<'_>,
+    ctx: Ctx<'_>,
     #[description = "The member to tell to read the installation guide"] member: serenity::User,
 ) -> Result<(), Error> {
     let embed = CreateEmbed::default()

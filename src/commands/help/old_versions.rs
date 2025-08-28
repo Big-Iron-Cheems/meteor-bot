@@ -1,4 +1,4 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
@@ -6,9 +6,9 @@ use serenity::{
 };
 
 /// Tells someone how to play on older versions of Minecraft
-#[poise::command(slash_command, rename = "old-versions")]
+#[poise::command(slash_command, category = "Help", rename = "old-versions")]
 pub async fn old_versions(
-    ctx: Context<'_>,
+    ctx: Ctx<'_>,
     #[description = "The member to tell how to play on older versions of Minecraft"]
     member: serenity::User,
 ) -> Result<(), Error> {

@@ -12,7 +12,8 @@ mod config;
 mod events;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+type Ctx<'a> = poise::Context<'a, Data, Error>;
+type AppCtx<'a> = poise::ApplicationContext<'a, Data, Error>;
 
 pub struct Data {
     /// Shared HTTP client

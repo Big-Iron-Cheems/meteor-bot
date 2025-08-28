@@ -1,15 +1,19 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
-use serenity::{builder::CreateEmbed, builder::EditThread, model::channel::ChannelType};
+use serenity::{
+    builder::{CreateEmbed, EditThread},
+    model::channel::ChannelType,
+};
 
 /// Locks the current forum post
 #[poise::command(
     slash_command,
+    category = "Moderation",
     guild_only,
     default_member_permissions = "MANAGE_THREADS",
     check = "is_thread_channel"
 )]
-pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
     let mut channel = ctx.guild_channel().await.ok_or("Failed to fetch channel")?;
 
     let embed = CreateEmbed::default()
@@ -44,7 +48,7 @@ pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Ensure the command is used in a thread channel, otherwise send an error message.
-async fn is_thread_channel(ctx: Context<'_>) -> Result<bool, Error> {
+async fn is_thread_channel(ctx: Ctx<'_>) -> Result<bool, Error> {
     let channel = match ctx.guild_channel().await {
         Some(c) => c,
         None => return Ok(false),

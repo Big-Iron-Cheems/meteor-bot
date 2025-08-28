@@ -1,4 +1,4 @@
-use crate::{config::constants::EMBED_COLOR, config::CONFIG, Context, Error};
+use crate::{config::constants::EMBED_COLOR, config::CONFIG, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use regex::Regex;
 use reqwest::Client;
@@ -7,9 +7,9 @@ use serenity::builder::CreateEmbed;
 use std::sync::LazyLock;
 
 /// Shows various stats about Meteor
-#[poise::command(slash_command)]
+#[poise::command(slash_command, category = "Utility")]
 pub async fn stats(
-    ctx: Context<'_>,
+    ctx: Ctx<'_>,
     #[description = "The date to fetch the stats for (DD-MM-YYYY)"] date: Option<String>,
 ) -> Result<(), Error> {
     let date = match validate_date(date) {

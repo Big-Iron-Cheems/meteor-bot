@@ -1,4 +1,4 @@
-use crate::{config::constants::EMBED_COLOR, config::CONFIG, Context, Error};
+use crate::{config::constants::EMBED_COLOR, config::CONFIG, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use reqwest::Client;
 use serde::Deserialize;
@@ -7,9 +7,9 @@ use serenity::builder::CreateEmbed;
 use std::collections::HashMap;
 
 /// Links your Discord account to your Meteor account
-#[poise::command(slash_command, dm_only)]
+#[poise::command(slash_command, category = "Utility", dm_only)]
 pub async fn link(
-    ctx: Context<'_>,
+    ctx: Ctx<'_>,
     #[description = "The token generated on the Meteor website"] token: String,
 ) -> Result<(), Error> {
     if token.trim().is_empty() {

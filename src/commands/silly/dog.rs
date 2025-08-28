@@ -1,11 +1,11 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serde_json::Value;
 use serenity::builder::CreateEmbed;
 
 /// Sends a random dog image
-#[poise::command(slash_command)]
-pub async fn dog(ctx: Context<'_>) -> Result<(), Error> {
+#[poise::command(slash_command, category = "Silly")]
+pub async fn dog(ctx: Ctx<'_>) -> Result<(), Error> {
     let api_url = "https://some-random-api.com/img/dog";
 
     let resp = match reqwest::get(api_url).await {

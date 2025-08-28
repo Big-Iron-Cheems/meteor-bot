@@ -1,12 +1,12 @@
-use crate::{config::constants::EMBED_COLOR, Context, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use rand::Rng;
 use serde_json::Value;
 use serenity::builder::CreateEmbed;
 
 /// Sends a random panda image
-#[poise::command(slash_command)]
-pub async fn panda(ctx: Context<'_>) -> Result<(), Error> {
+#[poise::command(slash_command, category = "Silly")]
+pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
     let is_red_panda = rand::rng().random_bool(0.5);
     let animal = if is_red_panda { "red_panda" } else { "panda" };
     let api_url = format!("https://some-random-api.com/img/{}", animal);
