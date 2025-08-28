@@ -1,8 +1,8 @@
 use crate::config::CONFIG;
 use poise::{serenity_prelude as serenity, FrameworkError};
 use serenity::{
-    all::{ShardId, ShardRunnerInfo}, ClientBuilder, GatewayIntents,
-    GuildId,
+    all::{ShardId, ShardRunnerInfo}, ClientBuilder,
+    GatewayIntents,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{watch, watch::Receiver, Mutex};
@@ -69,7 +69,7 @@ async fn main() {
             Box::pin(async move {
                 // Register commands
                 let num_commands = framework.options().commands.len();
-                if let Some(guild_id) = CONFIG.guild_id.parse::<u64>().ok().map(GuildId::new) {
+                if let Some(guild_id) = CONFIG.guild_id {
                     poise::builtins::register_in_guild(
                         ctx,
                         &framework.options().commands,

@@ -4,15 +4,19 @@ use serenity::User;
 
 /// Notify backend of user leave
 pub async fn member_remove_handler(data: &Data, user: &User) -> Result<(), Error> {
-    if CONFIG.backend_token.is_empty() {
+    let Some(token) = &CONFIG.backend_token else {
         return Ok(());
-    }
+    };
 
-    let url = format!("{}/discord/userLeft?id={}", CONFIG.api_base, user.id);
+    let Some(api_base) = &CONFIG.api_base else {
+        return Ok(());
+    };
+
+    let url = format!("{}/discord/userLeft?id={}", api_base, user.id);
 
     data.http_client
         .post(&url)
-        .header("Authorization", &CONFIG.backend_token)
+        .header("Authorization", token)
         .send()
         .await?;
 

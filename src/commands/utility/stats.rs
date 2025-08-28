@@ -70,9 +70,13 @@ struct StatsResponse {
     downloads: u32,
 }
 
-async fn fetch_stats(http_client: &Client, date: &str) -> Result<StatsResponse, reqwest::Error> {
-    let api_url = format!("{}/stats?date={}", CONFIG.api_base, date);
+async fn fetch_stats(http_client: &Client, date: &str) -> Result<StatsResponse, Error> {
+    let Some(api_base) = &CONFIG.api_base else {
+        return Err("API base URL not configured".into());
+    };
+
+    let api_url = format!("{}/stats?date={}", api_base, date);
 
     let resp = http_client.get(&api_url).send().await?;
-    resp.error_for_status()?.json().await
+    resp.error_for_status()?.json().await.map_err(|e| e.into())
 }

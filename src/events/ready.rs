@@ -3,7 +3,7 @@ use axum::{extract::State, http::StatusCode, response::Response, routing::get, R
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
 use serenity::{
-    all::{ActivityData, ChannelId, GuildId}, builder::EditChannel,
+    all::{ActivityData, ChannelId}, builder::EditChannel,
     Channel,
     Context,
 };
@@ -31,14 +31,12 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
 
 /// Start uptime pinger task for UptimeRobot
 async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
-    if CONFIG.uptime_url.is_empty() {
-        println!("Uptime URL not set, uptime requests will not be made");
+    let Some(uptime_url) = &CONFIG.uptime_url else {
         return Ok(());
-    }
+    };
 
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
-    let uptime_url = CONFIG.uptime_url.clone();
     let mut shutdown_rx = data.shutdown_rx.clone();
 
     tokio::spawn(async move {
@@ -86,33 +84,17 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 
 /// Start info channel updater tasks
 async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let guild_id = CONFIG
-        .guild_id
-        .parse::<u64>()
-        .ok()
-        .map(GuildId::new)
-        .ok_or("Invalid guild ID")?;
-
-    if CONFIG.member_count_id.is_empty() || CONFIG.download_count_id.is_empty() {
-        println!(
-            "Member count or download count channel IDs not set, info channels will not be updated"
-        );
+    let Some(guild_id) = CONFIG.guild_id else {
         return Ok(());
-    }
+    };
 
-    let member_count_id = CONFIG
-        .member_count_id
-        .parse::<u64>()
-        .ok()
-        .map(ChannelId::new)
-        .ok_or("Invalid member count channel ID")?;
+    let Some(member_count_id) = CONFIG.member_count_id else {
+        return Ok(());
+    };
 
-    let download_count_id = CONFIG
-        .download_count_id
-        .parse::<u64>()
-        .ok()
-        .map(ChannelId::new)
-        .ok_or("Invalid download count channel ID")?;
+    let Some(download_count_id) = CONFIG.download_count_id else {
+        return Ok(());
+    };
 
     // Download count updater
     spawn_updater(
@@ -189,7 +171,7 @@ async fn update_channel_name(
 ) -> Result<(), Error> {
     let new_name = format!(
         "{}: {}",
-        if channel_id.get() == CONFIG.member_count_id.parse::<u64>().unwrap() {
+        if Some(channel_id) == CONFIG.member_count_id {
             "Members"
         } else {
             "Downloads"
@@ -217,12 +199,9 @@ struct AppState {
 
 /// Start metrics server for Prometheus
 async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let guild_id = CONFIG
-        .guild_id
-        .parse::<u64>()
-        .ok()
-        .map(GuildId::new)
-        .ok_or("Invalid guild ID")?;
+    let Some(guild_id) = CONFIG.guild_id else {
+        return Ok(());
+    };
 
     if ctx.cache.guild(guild_id).is_none() {
         println!("Guild not found in cache, metrics server will not be started");
@@ -255,12 +234,9 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
 }
 
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
-    let guild_id = CONFIG
-        .guild_id
-        .parse::<u64>()
-        .ok()
-        .map(GuildId::new)
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let Some(guild_id) = CONFIG.guild_id else {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
 
     let member_count = state
         .ctx
@@ -281,8 +257,12 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 }
 
 async fn get_download_count(http_client: &reqwest::Client) -> Result<i64, Error> {
+    let Some(api_base) = &CONFIG.api_base else {
+        return Err("API base URL not configured".into());
+    };
+
     let response = http_client
-        .get(format!("{}/stats", CONFIG.api_base))
+        .get(format!("{}/stats", api_base))
         .send()
         .await?;
 

@@ -1,10 +1,6 @@
 use crate::{config::CONFIG, Error};
 use poise::serenity_prelude as serenity;
-use serenity::{
-    all::{GuildId, ReactionType}, prelude::Mentionable, Context,
-    EmojiId,
-    Message,
-};
+use serenity::{all::ReactionType, prelude::Mentionable, Context, Message};
 
 /// Respond to greetings and mentions
 pub async fn message_handler(ctx: &Context, msg: &Message) -> Result<(), Error> {
@@ -13,12 +9,10 @@ pub async fn message_handler(ctx: &Context, msg: &Message) -> Result<(), Error> 
         return Ok(());
     }
 
-    let guild_id = CONFIG
-        .guild_id
-        .parse::<u64>()
-        .ok()
-        .map(GuildId::new)
-        .ok_or("Invalid guild ID")?;
+    let Some(guild_id) = CONFIG.guild_id else {
+        return Ok(());
+    };
+
     if msg.guild_id != Some(guild_id)
         || !msg
             .content
@@ -41,21 +35,20 @@ pub async fn message_handler(ctx: &Context, msg: &Message) -> Result<(), Error> 
         }
     }
 
-    if content.contains("cope") && !CONFIG.cope_nn_id.is_empty() {
-        if let Ok(cope_emoji_id) = CONFIG.cope_nn_id.parse::<u64>().map(EmojiId::new) {
-            msg.react(
-                &ctx.http,
-                ReactionType::Custom {
+    if content.contains("cope") {
+        let emoji_id = CONFIG.cope_nn_id;
+        msg.react(
+            &ctx.http,
+            match emoji_id {
+                Some(id) => ReactionType::Custom {
                     animated: false,
-                    id: cope_emoji_id,
+                    id,
                     name: Some("cope".into()),
                 },
-            )
-            .await?;
-        } else {
-            msg.react(&ctx.http, ReactionType::Unicode("👋".into()))
-                .await?;
-        }
+                None => ReactionType::Unicode("👋".into()),
+            },
+        )
+        .await?;
     } else {
         msg.react(&ctx.http, ReactionType::Unicode("👋".into()))
             .await?;
