@@ -36,12 +36,12 @@ pub async fn event_handler(
         FullEvent::Message { new_message } => {
             log_err(
                 "message_handler",
-                message::message_handler(ctx, new_message),
+                message::message_handler(ctx, data, new_message),
             )
             .await;
         }
         _ => {
-            println!("Received event: {:?}", event.snake_case_name());
+            // Ignore other events
         }
     }
 

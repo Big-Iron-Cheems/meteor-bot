@@ -1,4 +1,4 @@
-use crate::{config::CONFIG, events::log_err, Data, Error};
+use crate::{config::Config, events::log_err, Data, Error};
 use axum::{extract::State, http::StatusCode, response::Response, routing::get, Router};
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
@@ -7,7 +7,7 @@ use serenity::{
     Channel,
     Context,
 };
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::{net::TcpListener, sync::watch::Receiver, time};
 
 static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
@@ -31,13 +31,14 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
 
 /// Start uptime pinger task for UptimeRobot
 async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
-    let Some(uptime_url) = &CONFIG.uptime_url else {
+    let Some(uptime_url) = &data.config.uptime_url else {
         return Ok(());
     };
 
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
     let mut shutdown_rx = data.shutdown_rx.clone();
+    let uptime_url = uptime_url.clone();
 
     tokio::spawn(async move {
         let mut interval = time::interval(UPTIME_INTERVAL);
@@ -84,15 +85,15 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 
 /// Start info channel updater tasks
 async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let Some(guild_id) = CONFIG.guild_id else {
+    let Some(guild_id) = data.config.guild_id else {
         return Ok(());
     };
 
-    let Some(member_count_id) = CONFIG.member_count_id else {
+    let Some(member_count_id) = data.config.member_count_id else {
         return Ok(());
     };
 
-    let Some(download_count_id) = CONFIG.download_count_id else {
+    let Some(download_count_id) = data.config.download_count_id else {
         return Ok(());
     };
 
@@ -101,13 +102,16 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
         ctx.clone(),
         download_count_id,
         {
+            let config = data.config.clone();
             let http_client = data.http_client.clone();
             move || {
+                let config = config.clone();
                 let http_client = http_client.clone();
-                async move { get_download_count(&http_client).await.ok() }
+                async move { get_download_count(&http_client, &config).await.ok() }
             }
         },
         data.shutdown_rx.clone(),
+        data.config.clone(),
     )
     .await;
 
@@ -123,6 +127,7 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
             }
         },
         data.shutdown_rx.clone(),
+        data.config.clone(),
     )
     .await;
 
@@ -139,6 +144,7 @@ async fn spawn_updater<F, Fut>(
     channel_id: ChannelId,
     mut get_count: F,
     mut shutdown_rx: Receiver<bool>,
+    config: Arc<Config>,
 ) where
     F: FnMut() -> Fut + Send + 'static,
     Fut: Future<Output = Option<i64>> + Send,
@@ -150,7 +156,7 @@ async fn spawn_updater<F, Fut>(
             tokio::select! {
                 _ = interval.tick() => {
                     if let Some(count) = get_count().await {
-                        if let Err(e) = update_channel_name(&ctx, channel_id, count).await {
+                        if let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await {
                             eprintln!("Failed to update channel {:?}: {}", channel_id.get(), e);
                         }
                     }
@@ -168,10 +174,11 @@ async fn update_channel_name(
     ctx: &Context,
     channel_id: ChannelId,
     count: i64,
+    config: &Config,
 ) -> Result<(), Error> {
     let new_name = format!(
         "{}: {}",
-        if Some(channel_id) == CONFIG.member_count_id {
+        if Some(channel_id) == config.member_count_id {
             "Members"
         } else {
             "Downloads"
@@ -195,11 +202,12 @@ async fn update_channel_name(
 #[derive(Clone)]
 struct AppState {
     ctx: Context,
+    config: Arc<Config>,
 }
 
 /// Start metrics server for Prometheus
 async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let Some(guild_id) = CONFIG.guild_id else {
+    let Some(guild_id) = data.config.guild_id else {
         return Ok(());
     };
 
@@ -208,7 +216,10 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
         return Ok(());
     }
 
-    let app_state = AppState { ctx: ctx.clone() };
+    let app_state = AppState {
+        ctx: ctx.clone(),
+        config: data.config.clone(),
+    };
 
     let app = Router::new()
         .route("/metrics", get(prometheus_metrics))
@@ -234,7 +245,7 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
 }
 
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
-    let Some(guild_id) = CONFIG.guild_id else {
+    let Some(guild_id) = state.config.guild_id else {
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
@@ -256,8 +267,8 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
         .unwrap())
 }
 
-async fn get_download_count(http_client: &reqwest::Client) -> Result<i64, Error> {
-    let Some(api_base) = &CONFIG.api_base else {
+async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<i64, Error> {
+    let Some(api_base) = &config.api_base else {
         return Err("API base URL not configured".into());
     };
 

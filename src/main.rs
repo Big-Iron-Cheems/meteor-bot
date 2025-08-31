@@ -1,4 +1,4 @@
-use crate::config::CONFIG;
+use crate::config::Config;
 use poise::{serenity_prelude as serenity, FrameworkError};
 use serenity::{
     all::{ShardId, ShardRunnerInfo}, ClientBuilder,
@@ -16,6 +16,8 @@ type Ctx<'a> = poise::Context<'a, Data, Error>;
 type AppCtx<'a> = poise::ApplicationContext<'a, Data, Error>;
 
 pub struct Data {
+    /// Bot configuration
+    pub config: Arc<Config>,
     /// Shared HTTP client
     pub http_client: reqwest::Client,
     /// Shard runners information
@@ -26,6 +28,9 @@ pub struct Data {
 
 #[tokio::main]
 async fn main() {
+    // Load configuration from environment
+    let config = Arc::new(Config::from_env());
+
     // Channel to signal shutdown to background tasks
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
@@ -48,29 +53,20 @@ async fn main() {
                 }
             })
         },
-        pre_command: |ctx| {
-            Box::pin(async move {
-                println!("Executing command {}...", ctx.command().qualified_name);
-            })
-        },
-        post_command: |ctx| {
-            Box::pin(async move {
-                println!("Executed command {}!", ctx.command().qualified_name);
-            })
-        },
         event_handler: |ctx, event, framework, data| {
             Box::pin(async move { events::event_handler(ctx, event, framework, data).await })
         },
         ..Default::default()
     };
 
+    let config_for_setup = Arc::clone(&config);
     let framework = poise::Framework::builder()
         .options(options)
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
                 // Register commands
                 let num_commands = framework.options().commands.len();
-                if let Some(guild_id) = CONFIG.guild_id {
+                if let Some(guild_id) = config_for_setup.guild_id {
                     poise::builtins::register_in_guild(
                         ctx,
                         &framework.options().commands,
@@ -85,6 +81,7 @@ async fn main() {
 
                 // Initialize shared data
                 let data = Data {
+                    config: config_for_setup,
                     http_client: reqwest::Client::new(),
                     shard_runners: framework.shard_manager().runners.clone(),
                     shutdown_rx,
@@ -97,7 +94,7 @@ async fn main() {
 
     let intents =
         GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS;
-    let mut client = ClientBuilder::new(&CONFIG.discord_token, intents)
+    let mut client = ClientBuilder::new(&config.discord_token, intents)
         .framework(framework)
         .await
         .expect("Failed to create client");

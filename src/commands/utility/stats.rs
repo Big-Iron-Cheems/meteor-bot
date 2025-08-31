@@ -1,7 +1,6 @@
-use crate::{config::constants::EMBED_COLOR, config::CONFIG, Ctx, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use regex::Regex;
-use reqwest::Client;
 use serde::Deserialize;
 use serenity::builder::CreateEmbed;
 use std::sync::LazyLock;
@@ -21,7 +20,7 @@ pub async fn stats(
         }
     };
 
-    let stats = match fetch_stats(&ctx.data().http_client, &date).await {
+    let stats = match fetch_stats(ctx, &date).await {
         Ok(stats) => stats,
         Err(e) => {
             eprintln!("Error fetching stats for {}: {:?}", date, e);
@@ -70,8 +69,10 @@ struct StatsResponse {
     downloads: u32,
 }
 
-async fn fetch_stats(http_client: &Client, date: &str) -> Result<StatsResponse, Error> {
-    let Some(api_base) = &CONFIG.api_base else {
+async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
+    let http_client = &ctx.data().http_client;
+    let config = &ctx.data().config;
+    let Some(api_base) = &config.api_base else {
         return Err("API base URL not configured".into());
     };
 

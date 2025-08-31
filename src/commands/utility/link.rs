@@ -1,6 +1,5 @@
-use crate::{config::constants::EMBED_COLOR, config::CONFIG, Ctx, Error};
+use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
-use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use serenity::builder::CreateEmbed;
@@ -24,7 +23,7 @@ pub async fn link(
 
     let user_id = ctx.author().id.to_string();
 
-    match link_discord_account(&ctx.data().http_client, &user_id, &token).await {
+    match link_discord_account(&ctx, &user_id, &token).await {
         Ok(()) => {
             let embed = CreateEmbed::default()
                 .title("Account Linked")
@@ -101,24 +100,24 @@ enum LinkError {
     DecodeFailed(reqwest::Error),
 }
 
-async fn link_discord_account(
-    http_client: &Client,
-    user_id: &str,
-    token: &str,
-) -> Result<(), LinkError> {
-    let Some(api_base) = &CONFIG.api_base else {
+async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Result<(), LinkError> {
+    let Some(api_base) = &ctx.data().config.api_base else {
         return Err(LinkError::MissingAPIBase);
     };
 
     let api_url = format!("{}/account/linkDiscord", api_base);
     let form_data = [("id", user_id), ("token", token)];
 
-    let backend_token = CONFIG
+    let backend_token = ctx
+        .data()
+        .config
         .backend_token
         .as_ref()
         .ok_or(LinkError::MissingBackendToken)?;
 
-    let resp = http_client
+    let resp = ctx
+        .data()
+        .http_client
         .post(&api_url)
         .header("Authorization", backend_token)
         .form(&form_data)

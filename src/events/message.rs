@@ -1,15 +1,15 @@
-use crate::{config::CONFIG, Error};
+use crate::{Data, Error};
 use poise::serenity_prelude as serenity;
 use serenity::{all::ReactionType, prelude::Mentionable, Context, Message};
 
 /// Respond to greetings and mentions
-pub async fn message_handler(ctx: &Context, msg: &Message) -> Result<(), Error> {
+pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Result<(), Error> {
     let bot_id = ctx.cache.current_user().id;
     if msg.author.id == bot_id {
         return Ok(());
     }
 
-    let Some(guild_id) = CONFIG.guild_id else {
+    let Some(guild_id) = data.config.guild_id else {
         return Ok(());
     };
 
@@ -36,7 +36,7 @@ pub async fn message_handler(ctx: &Context, msg: &Message) -> Result<(), Error> 
     }
 
     if content.contains("cope") {
-        let emoji_id = CONFIG.cope_nn_id;
+        let emoji_id = data.config.cope_nn_id;
         msg.react(
             &ctx.http,
             match emoji_id {

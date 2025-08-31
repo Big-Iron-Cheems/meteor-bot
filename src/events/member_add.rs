@@ -1,14 +1,14 @@
-use crate::{config::CONFIG, Data, Error};
+use crate::{Data, Error};
 use poise::serenity_prelude as serenity;
 use serenity::Member;
 
 /// Notify backend of user join
 pub async fn member_add_handler(data: &Data, member: &Member) -> Result<(), Error> {
-    let Some(token) = &CONFIG.backend_token else {
+    let Some(token) = &data.config.backend_token else {
         return Ok(());
     };
 
-    let Some(api_base) = &CONFIG.api_base else {
+    let Some(api_base) = &data.config.api_base else {
         return Ok(());
     };
 

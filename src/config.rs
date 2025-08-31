@@ -1,7 +1,7 @@
 use dotenvy::dotenv;
 use poise::serenity_prelude as serenity;
 use serenity::all::{ChannelId, EmojiId, GuildId};
-use std::{env, sync::LazyLock};
+use std::env;
 
 #[allow(dead_code)]
 pub mod constants {
@@ -122,6 +122,3 @@ impl Config {
         }
     }
 }
-
-/// Global static configuration instance
-pub static CONFIG: LazyLock<Config> = LazyLock::new(Config::from_env);
