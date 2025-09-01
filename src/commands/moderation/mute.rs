@@ -7,6 +7,7 @@ use serenity::{
     CreateEmbed,
     EditMember,
 };
+use tracing::error;
 
 /// Discord enforces a maximum timeout duration of 28 days
 const TIMEOUT_MAX_DAYS: i64 = 28;
@@ -140,7 +141,7 @@ async fn do_mute(
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            eprintln!("Error muting member {}: {:?}", member.user.id, e);
+            error!("Error muting member {}: {:?}", member.user.id, e);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while muting the member.")

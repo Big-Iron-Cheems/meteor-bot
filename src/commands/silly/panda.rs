@@ -16,7 +16,7 @@ pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
         Err(_) => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to fetch panda image")
+                    .content("Failed to fetch panda image")
                     .ephemeral(true),
             )
             .await?;
@@ -29,7 +29,7 @@ pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
         Err(_) => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to decode the response")
+                    .content("Failed to decode the response")
                     .ephemeral(true),
             )
             .await?;
@@ -51,7 +51,7 @@ pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
         None => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to parse the response")
+                    .content("Failed to parse the response")
                     .ephemeral(true),
             )
             .await?;

@@ -3,6 +3,7 @@ use dotenvy::dotenv;
 use poise::serenity_prelude as serenity;
 use serenity::all::{ChannelId, EmojiId, GuildId};
 use std::env;
+use tracing::info;
 
 #[allow(dead_code)]
 pub mod constants {
@@ -67,12 +68,12 @@ impl Config {
         let discord_token = Self::get_required_var("DISCORD_TOKEN")?;
 
         let api_base = Self::get_optional_nonempty_var("API_BASE").or_else(|| {
-            println!("API base URL not set, backend integration will be disabled");
+            info!("API base URL not set, backend integration will be disabled");
             None
         });
 
         let backend_token = Self::get_optional_nonempty_var("BACKEND_TOKEN").or_else(|| {
-            println!("Backend token not set, user join/leave events will not be reported");
+            info!("Backend token not set, user join/leave events will not be reported");
             None
         });
 
@@ -80,7 +81,7 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok().map(GuildId::new))
             .or_else(|| {
-                println!("Guild ID not configured, skipping info channel updates");
+                info!("Guild ID not configured, skipping info channel updates");
                 None
             });
 
@@ -93,7 +94,7 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok().map(EmojiId::new))
             .or_else(|| {
-                println!("Cope emoji ID not set, defaulting to wave emoji");
+                info!("Cope emoji ID not set, defaulting to wave emoji");
                 None
             });
 
@@ -101,7 +102,7 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok().map(ChannelId::new))
             .or_else(|| {
-                println!("Member count channel ID not set, info channels will not be updated");
+                info!("Member count channel ID not set, info channels will not be updated");
                 None
             });
 
@@ -109,12 +110,12 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok().map(ChannelId::new))
             .or_else(|| {
-                println!("Download count channel ID not set, info channels will not be updated");
+                info!("Download count channel ID not set, info channels will not be updated");
                 None
             });
 
         let uptime_url = Self::get_optional_nonempty_var("UPTIME_URL").or_else(|| {
-            println!("Uptime URL not set, uptime monitoring will be disabled");
+            info!("Uptime URL not set, uptime monitoring will be disabled");
             None
         });
 

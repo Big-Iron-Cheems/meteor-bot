@@ -5,6 +5,7 @@ use regex::Regex;
 use serde::Deserialize;
 use serenity::builder::CreateEmbed;
 use std::sync::LazyLock;
+use tracing::error;
 
 /// Shows various stats about Meteor
 #[poise::command(slash_command, category = "Utility")]
@@ -24,7 +25,7 @@ pub async fn stats(
     let stats = match fetch_stats(ctx, &date).await {
         Ok(stats) => stats,
         Err(e) => {
-            eprintln!("Error fetching stats for {}: {:?}", date, e);
+            error!("Error fetching stats for {}: {:?}", date, e);
             ctx.send(
                 CreateReply::default()
                     .content("Failed to fetch stats for this date.")

@@ -6,6 +6,7 @@ use serenity::{
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{watch, watch::Receiver, Mutex};
+use tracing::{error, info};
 
 mod commands;
 mod config;
@@ -28,12 +29,18 @@ pub struct Data {
 
 #[tokio::main]
 async fn main() {
+    // Initialize tracing subscriber for logging
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .compact()
+        .init();
+
     // Load configuration from environment
     let config = match Config::from_env() {
         Ok(cfg) => Arc::new(cfg),
         Err(e) => {
-            eprintln!("Failed to load configuration: {e}");
-            std::process::exit(1);
+            error!("Failed to load configuration: {e}");
+            return;
         }
     };
 
@@ -46,14 +53,15 @@ async fn main() {
             Box::pin(async move {
                 match error {
                     FrameworkError::Setup { error, .. } => {
+                        error!(?error, "Failed to start bot");
                         panic!("Failed to start bot: {:?}", error);
                     }
                     FrameworkError::Command { error, ctx, .. } => {
-                        println!("Error in command `{}`: {:?}", ctx.command().name, error);
+                        info!("Error in command `{}`: {:?}", ctx.command().name, error);
                     }
                     error => {
                         if let Err(e) = poise::builtins::on_error(error).await {
-                            println!("Error while handling error: {}", e);
+                            info!("Error while handling error: {}", e);
                         }
                     }
                 }
@@ -80,10 +88,10 @@ async fn main() {
                         guild_id,
                     )
                     .await?;
-                    println!("Registered {} guild slash commands", num_commands);
+                    info!("Registered {} guild slash commands", num_commands);
                 } else {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                    println!("Registered {} global slash commands", num_commands);
+                    info!("Registered {} global slash commands", num_commands);
                 }
 
                 // Initialize shared data
@@ -109,11 +117,11 @@ async fn main() {
     tokio::select! {
         result = client.start() => {
             if let Err(err) = result {
-                eprintln!("Client error: {:?}", err);
+                error!("Client error: {:?}", err);
             }
         }
         _ = tokio::signal::ctrl_c() => {
-            println!("\nReceived CTRL+C, shutting down gracefully...");
+            info!("Received CTRL+C, shutting down gracefully...");
             let _ = shutdown_tx.send(true);
             client.shard_manager.shutdown_all().await;
         }

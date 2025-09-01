@@ -6,6 +6,7 @@ mod ready;
 use crate::{Data, Error};
 use poise::{serenity_prelude as serenity, FrameworkContext};
 use serenity::{all::FullEvent, Context};
+use tracing::{error, info};
 
 /// Main event handler
 pub async fn event_handler(
@@ -16,7 +17,7 @@ pub async fn event_handler(
 ) -> Result<(), Error> {
     match event {
         FullEvent::Ready { data_about_bot, .. } => {
-            println!("Logged in as {}", data_about_bot.user.name);
+            info!("Logged in as {}", data_about_bot.user.name);
             log_err("ready_handler", ready::ready_handler(ctx, data)).await;
         }
         FullEvent::GuildMemberAddition { new_member } => {
@@ -54,6 +55,6 @@ where
     F: Future<Output = Result<T, Error>>,
 {
     if let Err(e) = fut.await {
-        eprintln!("Error in {}: {}", label, e);
+        error!("Error in {}: {}", label, e);
     }
 }

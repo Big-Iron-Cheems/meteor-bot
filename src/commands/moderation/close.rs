@@ -5,6 +5,7 @@ use serenity::{
     builder::{CreateEmbed, EditThread},
     model::channel::ChannelType,
 };
+use tracing::error;
 
 /// Locks the current forum post
 #[poise::command(
@@ -38,7 +39,7 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
             // Thread successfully closed - embed was already sent
         }
         Err(e) => {
-            eprintln!("Error locking thread {}: {:?}", channel.id, e);
+            error!("Error locking thread {}: {:?}", channel.id, e);
             ctx.send(
                 CreateReply::default()
                     .content("Failed to lock/archive: this thread may already be archived.")

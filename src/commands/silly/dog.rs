@@ -13,7 +13,7 @@ pub async fn dog(ctx: Ctx<'_>) -> Result<(), Error> {
         Err(_) => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to fetch dog image")
+                    .content("Failed to fetch dog image")
                     .ephemeral(true),
             )
             .await?;
@@ -26,7 +26,7 @@ pub async fn dog(ctx: Ctx<'_>) -> Result<(), Error> {
         Err(_) => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to decode the response")
+                    .content("Failed to decode the response")
                     .ephemeral(true),
             )
             .await?;
@@ -48,7 +48,7 @@ pub async fn dog(ctx: Ctx<'_>) -> Result<(), Error> {
         None => {
             ctx.send(
                 CreateReply::default()
-                    .content("❌ Failed to parse the response")
+                    .content("Failed to parse the response")
                     .ephemeral(true),
             )
             .await?;

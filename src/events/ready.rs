@@ -10,6 +10,7 @@ use serenity::{
 };
 use std::{sync::Arc, time::Duration};
 use tokio::{net::TcpListener, sync::watch::Receiver, time};
+use tracing::{error, info};
 
 static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
 static UPTIME_INTERVAL: Duration = Duration::from_secs(60); // 60 seconds
@@ -68,11 +69,11 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
                     };
 
                     if let Err(e) = http_client.get(&url).send().await {
-                        eprintln!("Failed to send uptime request: {}", e);
+                        error!("Failed to send uptime request: {}", e);
                     }
                 }
                 _ = shutdown_rx.changed() => {
-                    println!("uptime_ready_handler shutting down...");
+                    info!("uptime_ready_handler shutting down...");
                     break;
                 }
             }
@@ -130,7 +131,7 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
     )
     .await;
 
-    println!(
+    info!(
         "Updating info channels every {} seconds",
         UPDATE_PERIOD.as_secs()
     );
@@ -156,12 +157,12 @@ async fn spawn_updater<F, Fut>(
                 _ = interval.tick() => {
                     if let Some(count) = get_count().await {
                         if let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await {
-                            eprintln!("Failed to update channel {:?}: {}", channel_id.get(), e);
+                            error!("Failed to update channel {:?}: {}", channel_id.get(), e);
                         }
                     }
                 }
                 _ = shutdown_rx.changed() => {
-                    println!("info_channel_ready_handler (ID: {:?}) shutting down...", channel_id.get());
+                    info!("info_channel_ready_handler (ID: {:?}) shutting down...", channel_id.get());
                     break;
                 }
             }
@@ -211,7 +212,7 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
     };
 
     if ctx.cache.guild(guild_id).is_none() {
-        println!("Guild not found in cache, metrics server will not be started");
+        info!("Guild not found in cache, metrics server will not be started");
         return Ok(());
     }
 
@@ -225,18 +226,18 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
         .with_state(app_state);
 
     let listener = TcpListener::bind("0.0.0.0:9400").await?;
-    println!("Providing metrics on :9400/metrics");
+    info!("Providing metrics on :9400/metrics");
 
     let mut shutdown_rx = data.shutdown_rx.clone();
     tokio::spawn(async move {
         if let Err(e) = axum::serve(listener, app)
             .with_graceful_shutdown(async move {
                 let _ = shutdown_rx.changed().await;
-                println!("metrics_ready_handler shutting down...");
+                info!("metrics_ready_handler shutting down...");
             })
             .await
         {
-            eprintln!("Metrics server error: {}", e);
+            error!("Metrics server error: {}", e);
         }
     });
 

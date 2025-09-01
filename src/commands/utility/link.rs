@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use serenity::builder::CreateEmbed;
 use std::collections::HashMap;
+use tracing::error;
 
 /// Links your Discord account to your Meteor account
 #[poise::command(slash_command, category = "Utility", dm_only)]
@@ -35,7 +36,7 @@ pub async fn link(
                 .await?;
         }
         Err(e) => {
-            eprintln!(
+            error!(
                 "Failed to link Discord account for user {}: {:#}",
                 user_id, e
             );
