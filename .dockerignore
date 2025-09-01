@@ -1,0 +1,11 @@
+.env
+.git
+.gitignore
+.idea/
+.vs/
+.vscode/
+Dockerfile*
+/bin
+/target
+LICENSE
+README.md
