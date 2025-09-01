@@ -31,7 +31,6 @@ pub struct Data {
 async fn main() {
     // Initialize tracing subscriber for logging
     tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
         .compact()
         .init();
 
