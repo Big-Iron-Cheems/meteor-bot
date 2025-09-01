@@ -1,8 +1,8 @@
 # Build stage
 FROM rust:alpine AS builder
 
-# Install necessary build dependencies
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
+# Install build dependencies
+RUN apk add --no-cache musl-dev pkgconfig
 
 # Set working directory
 WORKDIR /app
@@ -10,18 +10,19 @@ WORKDIR /app
 # Copy dependency files first for better layer caching
 COPY Cargo.toml Cargo.lock ./
 
-# Create dummy source to build dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release --target x86_64-unknown-linux-musl
-RUN rm -rf src/
-
 # Copy actual source and build
 COPY src/ ./src/
+
+# Build release binary with musl target
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # Runtime stage
 FROM alpine:latest
+
+# Install runtime dependencies
 RUN apk add --no-cache ca-certificates
+
+# Create a non-root user
 RUN adduser -D meteor
 
 # Copy the built binary from the builder stage
