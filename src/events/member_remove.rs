@@ -5,11 +5,7 @@ use serenity::User;
 
 /// Notify backend of user leave
 pub async fn member_remove_handler(data: &Data, user: &User) -> Result<(), Error> {
-    let Some(token) = &data.config.backend_token else {
-        return Ok(());
-    };
-
-    let Some(api_base) = &data.config.api_base else {
+    let (Some(token), Some(api_base)) = (&data.config.backend_token, &data.config.api_base) else {
         return Ok(());
     };
 

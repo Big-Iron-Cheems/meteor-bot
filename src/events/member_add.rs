@@ -5,11 +5,7 @@ use serenity::Member;
 
 /// Notify backend of user join
 pub async fn member_add_handler(data: &Data, member: &Member) -> Result<(), Error> {
-    let Some(token) = &data.config.backend_token else {
-        return Ok(());
-    };
-
-    let Some(api_base) = &data.config.api_base else {
+    let (Some(token), Some(api_base)) = (&data.config.backend_token, &data.config.api_base) else {
         return Ok(());
     };
 

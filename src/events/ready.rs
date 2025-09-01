@@ -85,15 +85,11 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 
 /// Start info channel updater tasks
 async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let Some(guild_id) = data.config.guild_id else {
-        return Ok(());
-    };
-
-    let Some(member_count_id) = data.config.member_count_id else {
-        return Ok(());
-    };
-
-    let Some(download_count_id) = data.config.download_count_id else {
+    let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
+        data.config.guild_id,
+        data.config.member_count_id,
+        data.config.download_count_id,
+    ) else {
         return Ok(());
     };
 
