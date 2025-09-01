@@ -1,4 +1,5 @@
 use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use anyhow::Context;
 use poise::{serenity_prelude as serenity, CreateReply};
 use serde::Deserialize;
 use serde_json::Value;
@@ -33,49 +34,15 @@ pub async fn link(
             ctx.send(CreateReply::default().embed(embed).ephemeral(true))
                 .await?;
         }
-        Err(LinkError::MissingAPIBase) => {
-            eprintln!("API base URL is not set. Cannot link Discord account.");
-            ctx.send(
-                CreateReply::default()
-                    .content("Failed to link your Discord account. Please try again later.")
-                    .ephemeral(true),
-            )
-            .await?;
-        }
-        Err(LinkError::MissingBackendToken) => {
-            eprintln!("Backend token is not set. Cannot link Discord account.");
-            ctx.send(
-                CreateReply::default()
-                    .content("Failed to link your Discord account. Please try again later.")
-                    .ephemeral(true),
-            )
-            .await?;
-        }
-        Err(LinkError::InvalidToken) => {
-            ctx.send(
-                CreateReply::default()
-                    .content("Failed to link your Discord account. Try generating a new token by refreshing the account page and clicking the link button again.")
-                    .ephemeral(true),
-            )
-            .await?;
-        }
-        Err(LinkError::RequestFailed(e)) => {
+        Err(e) => {
             eprintln!(
-                "Failed to link Discord account for user {}: {:?}",
+                "Failed to link Discord account for user {}: {:#}",
                 user_id, e
             );
+
             ctx.send(
                 CreateReply::default()
-                    .content("Failed to link your Discord account. Please try again later.")
-                    .ephemeral(true),
-            )
-            .await?;
-        }
-        Err(LinkError::DecodeFailed(e)) => {
-            eprintln!("Failed to decode response for user {}: {:?}", user_id, e);
-            ctx.send(
-                CreateReply::default()
-                    .content("Failed to decode the response.")
+                    .content(e.to_string())
                     .ephemeral(true),
             )
             .await?;
@@ -91,30 +58,21 @@ struct ApiResponse {
     data: HashMap<String, Value>,
 }
 
-#[derive(Debug)]
-enum LinkError {
-    MissingAPIBase,
-    MissingBackendToken,
-    InvalidToken,
-    RequestFailed(reqwest::Error),
-    DecodeFailed(reqwest::Error),
-}
-
-async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Result<(), LinkError> {
-    let Some(api_base) = &ctx.data().config.api_base else {
-        return Err(LinkError::MissingAPIBase);
-    };
-
+async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Result<(), Error> {
+    let api_base = ctx
+        .data()
+        .config
+        .api_base
+        .as_ref()
+        .context("API base URL is not set. Cannot link Discord account.")?;
     let api_url = format!("{}/account/linkDiscord", api_base);
     let form_data = [("id", user_id), ("token", token)];
-
     let backend_token = ctx
         .data()
         .config
         .backend_token
         .as_ref()
-        .ok_or(LinkError::MissingBackendToken)?;
-
+        .context("Backend token is not set. Cannot link Discord account.")?;
     let resp = ctx
         .data()
         .http_client
@@ -123,16 +81,15 @@ async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Resu
         .form(&form_data)
         .send()
         .await
-        .map_err(LinkError::RequestFailed)?;
-
+        .context("Failed to send request to link Discord account.")?;
     let json_response = resp
         .json::<ApiResponse>()
         .await
-        .map_err(LinkError::DecodeFailed)?;
-
+        .context("Failed to decode response from backend.")?;
     if json_response.data.contains_key("error") {
-        return Err(LinkError::InvalidToken);
+        anyhow::bail!(
+            "Failed to link your Discord account. Try generating a new token by refreshing the account page and clicking the link button again."
+        );
     }
-
     Ok(())
 }

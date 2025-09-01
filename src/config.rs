@@ -1,3 +1,4 @@
+use anyhow::{Context, Error};
 use dotenvy::dotenv;
 use poise::serenity_prelude as serenity;
 use serenity::all::{ChannelId, EmojiId, GuildId};
@@ -37,14 +38,14 @@ pub struct Config {
 
 impl Config {
     /// Ensure the retrieved variable is set
-    fn get_required_var(key: &str) -> String {
+    fn get_required_var(key: &str) -> Result<String, Error> {
         env::var(key)
             .ok()
             .map(|v| v.trim().to_string())
             .filter(|v| !v.is_empty())
-            .unwrap_or_else(|| {
-                panic!("Environment variable '{key}' is required and cannot be empty")
-            })
+            .context(format!(
+                "Environment variable '{key}' is required and cannot be empty"
+            ))
     }
 
     /// Parse an optional non-empty string env var
@@ -60,10 +61,10 @@ impl Config {
     }
 
     /// Load configuration from environment variables
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Result<Self, Error> {
         dotenv().ok();
 
-        let discord_token = Self::get_required_var("DISCORD_TOKEN");
+        let discord_token = Self::get_required_var("DISCORD_TOKEN")?;
 
         let api_base = Self::get_optional_nonempty_var("API_BASE").or_else(|| {
             println!("API base URL not set, backend integration will be disabled");
@@ -117,7 +118,7 @@ impl Config {
             None
         });
 
-        Self {
+        Ok(Self {
             discord_token,
             api_base,
             backend_token,
@@ -127,6 +128,6 @@ impl Config {
             member_count_id,
             download_count_id,
             uptime_url,
-        }
+        })
     }
 }

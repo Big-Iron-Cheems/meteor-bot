@@ -1,4 +1,5 @@
 use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use anyhow::Context;
 use poise::{serenity_prelude as serenity, CreateReply};
 use regex::Regex;
 use serde::Deserialize;
@@ -72,12 +73,18 @@ struct StatsResponse {
 async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
     let http_client = &ctx.data().http_client;
     let config = &ctx.data().config;
-    let Some(api_base) = &config.api_base else {
-        return Err("API base URL not configured".into());
-    };
-
+    let api_base = config
+        .api_base
+        .as_ref()
+        .context("API base URL not configured")?;
     let api_url = format!("{}/stats?date={}", api_base, date);
-
-    let resp = http_client.get(&api_url).send().await?;
-    resp.error_for_status()?.json().await.map_err(|e| e.into())
+    let resp = http_client
+        .get(&api_url)
+        .send()
+        .await
+        .context("Failed to send stats request")?;
+    let resp = resp
+        .error_for_status()
+        .context("API returned error status for stats request")?;
+    resp.json().await.context("Failed to decode stats response")
 }

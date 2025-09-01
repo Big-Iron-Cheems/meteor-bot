@@ -1,4 +1,5 @@
 use crate::{Data, Error};
+use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use serenity::Member;
 
@@ -18,7 +19,8 @@ pub async fn member_add_handler(data: &Data, member: &Member) -> Result<(), Erro
         .post(&url)
         .header("Authorization", token)
         .send()
-        .await?;
+        .await
+        .context("Failed to notify backend of user join")?;
 
     Ok(())
 }

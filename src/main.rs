@@ -11,7 +11,7 @@ mod commands;
 mod config;
 mod events;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
+type Error = anyhow::Error;
 type Ctx<'a> = poise::Context<'a, Data, Error>;
 type AppCtx<'a> = poise::ApplicationContext<'a, Data, Error>;
 
@@ -29,7 +29,13 @@ pub struct Data {
 #[tokio::main]
 async fn main() {
     // Load configuration from environment
-    let config = Arc::new(Config::from_env());
+    let config = match Config::from_env() {
+        Ok(cfg) => Arc::new(cfg),
+        Err(e) => {
+            eprintln!("Failed to load configuration: {e}");
+            std::process::exit(1);
+        }
+    };
 
     // Channel to signal shutdown to background tasks
     let (shutdown_tx, shutdown_rx) = watch::channel(false);

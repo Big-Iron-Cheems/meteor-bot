@@ -1,4 +1,5 @@
 use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
+use anyhow::Context;
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     model::{guild::Member, user::User},
@@ -26,7 +27,7 @@ struct BanModal {
     default_member_permissions = "BAN_MEMBERS"
 )]
 pub async fn ban_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
-    let guild = app_ctx.guild().ok_or("Not in a guild")?.to_owned();
+    let guild = app_ctx.guild().context("Not in a guild")?.to_owned();
     let member = guild.member(&app_ctx.serenity_context(), user.id).await?;
 
     let response: Option<BanModal> = poise::execute_modal(app_ctx, None, None).await?;

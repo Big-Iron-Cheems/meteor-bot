@@ -1,4 +1,5 @@
 use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use anyhow::Context;
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateEmbed, EditThread},
@@ -14,7 +15,10 @@ use serenity::{
     check = "is_thread_channel"
 )]
 pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
-    let mut channel = ctx.guild_channel().await.ok_or("Failed to fetch channel")?;
+    let mut channel = ctx
+        .guild_channel()
+        .await
+        .context("Failed to fetch channel")?;
 
     let embed = CreateEmbed::default()
         .title("Thread Closed")

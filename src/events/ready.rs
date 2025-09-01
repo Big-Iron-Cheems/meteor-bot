@@ -1,4 +1,5 @@
 use crate::{config::Config, events::log_err, Data, Error};
+use anyhow::Context as AnyhowContext;
 use axum::{extract::State, http::StatusCode, response::Response, routing::get, Router};
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
@@ -266,21 +267,22 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 }
 
 async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<i64, Error> {
-    let Some(api_base) = &config.api_base else {
-        return Err("API base URL not configured".into());
-    };
-
+    let api_base = config
+        .api_base
+        .as_ref()
+        .context("API base URL not configured")?;
     let response = http_client
         .get(format!("{}/stats", api_base))
         .send()
-        .await?;
-
-    let stats = response.json::<Value>().await?;
-
+        .await
+        .context("Failed to send request to fetch download stats")?;
+    let stats = response
+        .json::<Value>()
+        .await
+        .context("Failed to decode download stats response")?;
     let downloads = stats["downloads"]
         .as_f64()
-        .ok_or("Failed to parse downloads as number")?;
-
+        .context("Failed to parse downloads as number")?;
     Ok(downloads as i64)
 }
 

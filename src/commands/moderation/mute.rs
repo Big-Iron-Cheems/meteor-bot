@@ -1,4 +1,5 @@
 use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
+use anyhow::Context;
 use chrono::{Duration, Utc};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
@@ -30,7 +31,7 @@ struct MuteModal {
     default_member_permissions = "MODERATE_MEMBERS"
 )]
 pub async fn mute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
-    let guild = app_ctx.guild().ok_or("Not in a guild")?.to_owned();
+    let guild = app_ctx.guild().context("Not in a guild")?.to_owned();
     let member = guild.member(&app_ctx.serenity_context(), user.id).await?;
 
     let response: Option<MuteModal> = poise::execute_modal(app_ctx, None, None).await?;
@@ -38,7 +39,7 @@ pub async fn mute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
         let duration = response
             .duration
             .parse::<humantime::Duration>()
-            .map_err(|_| "Invalid duration format")?;
+            .map_err(|_| anyhow::anyhow!("Invalid duration format"))?;
         do_mute(app_ctx.into(), &member, duration, response.reason).await?;
     } else {
         poise::Context::Application(app_ctx)
@@ -77,7 +78,8 @@ async fn do_mute(
     duration: humantime::Duration,
     reason: Option<String>,
 ) -> Result<(), Error> {
-    let chrono_dur = Duration::from_std(*duration).map_err(|_| "Invalid duration")?;
+    let chrono_dur =
+        Duration::from_std(*duration).map_err(|_| anyhow::anyhow!("Invalid duration"))?;
 
     // validate against the max
     if chrono_dur > Duration::days(TIMEOUT_MAX_DAYS) {

@@ -27,6 +27,7 @@ pub fn get_commands() -> Vec<Command<Data, Error>> {
         silly::monkey(),
         silly::panda(),
         // Utility commands
+        utility::clear_guild_commands(),
         utility::link(),
         utility::stats(),
         // --- Context menu commands ---
