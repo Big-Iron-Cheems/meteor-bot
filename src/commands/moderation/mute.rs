@@ -141,7 +141,7 @@ async fn do_mute(
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error muting member {}: {:?}", member.user.id, e);
+            error!("Error muting member {}: {}", member.user.id, e);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while muting the member.")

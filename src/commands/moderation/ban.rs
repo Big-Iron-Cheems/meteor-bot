@@ -103,7 +103,7 @@ async fn do_ban(
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error banning member {}: {:?}", member.user.id, e);
+            error!("Error banning member {}: {}", member.user.id, e);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while banning the member.")

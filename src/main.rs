@@ -30,9 +30,7 @@ pub struct Data {
 #[tokio::main]
 async fn main() {
     // Initialize tracing subscriber for logging
-    tracing_subscriber::fmt()
-        .compact()
-        .init();
+    tracing_subscriber::fmt().compact().init();
 
     // Load configuration from environment
     let config = match Config::from_env() {
@@ -116,7 +114,7 @@ async fn main() {
     tokio::select! {
         result = client.start() => {
             if let Err(err) = result {
-                error!("Client error: {:?}", err);
+                error!("Client error: {}", err);
             }
         }
         _ = tokio::signal::ctrl_c() => {

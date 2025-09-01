@@ -25,7 +25,7 @@ pub async fn stats(
     let stats = match fetch_stats(ctx, &date).await {
         Ok(stats) => stats,
         Err(e) => {
-            error!("Error fetching stats for {}: {:?}", date, e);
+            error!("Error fetching stats for {}: {}", date, e);
             ctx.send(
                 CreateReply::default()
                     .content("Failed to fetch stats for this date.")

@@ -36,10 +36,7 @@ pub async fn link(
                 .await?;
         }
         Err(e) => {
-            error!(
-                "Failed to link Discord account for user {}: {:#}",
-                user_id, e
-            );
+            error!("Failed to link Discord account for user {}: {}", user_id, e);
 
             ctx.send(
                 CreateReply::default()

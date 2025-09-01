@@ -94,7 +94,7 @@ async fn do_unmute(ctx: Ctx<'_>, member: &Member, reason: Option<String>) -> Res
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error unmuting member {}: {:?}", member.user.id, e);
+            error!("Error unmuting member {}: {}", member.user.id, e);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while unmuting the member.")
