@@ -25,7 +25,7 @@ struct BanModal {
     guild_only,
     default_member_permissions = "BAN_MEMBERS"
 )]
-pub async fn menu_ban(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
+pub async fn ban_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
     let guild = app_ctx.guild().ok_or("Not in a guild")?.to_owned();
     let member = guild.member(&app_ctx.serenity_context(), user.id).await?;
 

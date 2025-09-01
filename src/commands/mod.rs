@@ -32,8 +32,8 @@ pub fn get_commands() -> Vec<Command<Data, Error>> {
         // --- Context menu commands ---
 
         // Moderation commands
-        moderation::menu_ban(),
-        moderation::menu_mute(),
-        moderation::menu_unmute(),
+        moderation::ban_menu(),
+        moderation::mute_menu(),
+        moderation::unmute_menu(),
     ]
 }

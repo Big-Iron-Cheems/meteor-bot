@@ -23,6 +23,8 @@ pub struct Config {
     pub backend_token: Option<String>,
     /// Discord guild ID for guild-specific commands
     pub guild_id: Option<GuildId>,
+    /// If true, register commands in the guild specified by guild_id. Otherwise, register globally.
+    pub register_guild_commands: bool,
     /// Cope emoji ID
     pub cope_nn_id: Option<EmojiId>,
     /// Member count channel ID
@@ -81,6 +83,11 @@ impl Config {
                 None
             });
 
+        let register_guild_commands = env::var("REGISTER_GUILD_COMMANDS")
+            .ok()
+            .map(|v| v.trim().eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
         let cope_nn_id = env::var("COPE_NN_ID")
             .ok()
             .and_then(|s| s.parse().ok().map(EmojiId::new))
@@ -115,6 +122,7 @@ impl Config {
             api_base,
             backend_token,
             guild_id,
+            register_guild_commands,
             cope_nn_id,
             member_count_id,
             download_count_id,

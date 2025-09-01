@@ -48,17 +48,15 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
                 _ = interval.tick() => {
                     // Compute average latency across shards
                     let latency_ms = {
-                        let runners_map = shard_runners.lock().await;
-                        let valid_latencies = runners_map
+                        let (sum, count) = shard_runners.lock().await
                             .values()
-                            .filter_map(|r| r.latency)
-                            .map(|d| d.as_millis())
-                            .collect::<Vec<u128>>();
+                            .filter_map(|r| r.latency.map(|d| d.as_millis()))
+                            .fold((0u128, 0u128), |(sum, count), latency| (sum + latency, count + 1));
 
-                        if valid_latencies.is_empty() {
+                        if count == 0 {
                             0
                         } else {
-                            valid_latencies.iter().sum::<u128>() / valid_latencies.len() as u128
+                            sum / count
                         }
                     };
 

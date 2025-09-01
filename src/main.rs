@@ -40,14 +40,14 @@ async fn main() {
             Box::pin(async move {
                 match error {
                     FrameworkError::Setup { error, .. } => {
-                        panic!("Failed to start bot: {:?}", error)
+                        panic!("Failed to start bot: {:?}", error);
                     }
                     FrameworkError::Command { error, ctx, .. } => {
                         println!("Error in command `{}`: {:?}", ctx.command().name, error);
                     }
                     error => {
                         if let Err(e) = poise::builtins::on_error(error).await {
-                            println!("Error while handling error: {}", e)
+                            println!("Error while handling error: {}", e);
                         }
                     }
                 }
@@ -66,7 +66,8 @@ async fn main() {
             Box::pin(async move {
                 // Register commands
                 let num_commands = framework.options().commands.len();
-                if let Some(guild_id) = config_for_setup.guild_id {
+                if config_for_setup.register_guild_commands && config_for_setup.guild_id.is_some() {
+                    let guild_id = config_for_setup.guild_id.unwrap();
                     poise::builtins::register_in_guild(
                         ctx,
                         &framework.options().commands,

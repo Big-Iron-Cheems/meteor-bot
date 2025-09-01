@@ -22,7 +22,7 @@ struct UnmuteModal {
     guild_only,
     default_member_permissions = "MODERATE_MEMBERS"
 )]
-pub async fn menu_unmute(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
+pub async fn unmute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
     let guild = app_ctx.guild().ok_or("Not in a guild")?.to_owned();
     let member = guild.member(&app_ctx.serenity_context(), user.id).await?;
 
