@@ -2,6 +2,7 @@ use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
+    model::user::User,
     prelude::Mentionable,
 };
 
@@ -9,13 +10,13 @@ use serenity::{
 #[poise::command(slash_command, category = "Help")]
 pub async fn logs(
     ctx: Ctx<'_>,
-    #[description = "The member to tell how to find the Minecraft logs"] member: serenity::User,
+    #[description = "User to help with finding Minecraft logs"] user: User,
 ) -> Result<(), Error> {
     let embed = CreateEmbed::default()
         .title("Find the Minecraft Logs")
         .description(format!(
             "{} The logs guide explains how to find and share your Minecraft logs, please read it.",
-            member.mention()
+            user.mention()
         ))
         .color(EMBED_COLOR);
 

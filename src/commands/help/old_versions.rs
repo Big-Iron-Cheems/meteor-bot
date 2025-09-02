@@ -2,6 +2,7 @@ use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
+    model::user::User,
     prelude::Mentionable,
 };
 
@@ -9,14 +10,13 @@ use serenity::{
 #[poise::command(slash_command, category = "Help", rename = "old-versions")]
 pub async fn old_versions(
     ctx: Ctx<'_>,
-    #[description = "The member to tell how to play on older versions of Minecraft"]
-    member: serenity::User,
+    #[description = "User to help with older Minecraft versions"] user: User,
 ) -> Result<(), Error> {
     let embed = CreateEmbed::default()
         .title("Old Versions Guide")
         .description(format!(
             "{} The old version guide explains how to play on older versions of Minecraft, please read it.",
-            member.mention()
+            user.mention()
         ))
         .color(EMBED_COLOR);
 

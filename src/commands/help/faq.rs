@@ -2,6 +2,7 @@ use crate::{config::constants::EMBED_COLOR, Ctx, Error};
 use poise::{serenity_prelude as serenity, CreateReply};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
+    model::user::User,
     prelude::Mentionable,
 };
 
@@ -9,13 +10,13 @@ use serenity::{
 #[poise::command(slash_command, category = "Help")]
 pub async fn faq(
     ctx: Ctx<'_>,
-    #[description = "The member to tell to read the FAQ"] member: serenity::Member,
+    #[description = "User to direct to the FAQ"] user: User,
 ) -> Result<(), Error> {
     let embed = CreateEmbed::default()
         .title("Read the FAQ")
         .description(format!(
             "{} The FAQ answers your question, please read it.",
-            member.mention()
+            user.mention()
         ))
         .color(EMBED_COLOR);
 
