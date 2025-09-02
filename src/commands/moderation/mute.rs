@@ -44,11 +44,7 @@ pub async fn mute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
         do_mute(app_ctx.into(), &member, duration, response.reason).await?;
     } else {
         poise::Context::Application(app_ctx)
-            .send(
-                CreateReply::default()
-                    .content("Mute cancelled.")
-                    .ephemeral(true),
-            )
+            .send(CreateReply::default().content("Mute cancelled.").ephemeral(true))
             .await?;
     }
     Ok(())
@@ -64,8 +60,7 @@ pub async fn mute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
 pub async fn mute(
     ctx: Ctx<'_>,
     #[description = "The member to mute"] member: Member,
-    #[description = "The duration of the mute (e.g., 1s, 1m, 1h, 1d, 1w)"]
-    duration: humantime::Duration,
+    #[description = "The duration of the mute (e.g., 1s, 1m, 1h, 1d, 1w)"] duration: humantime::Duration,
     #[description = "The reason for the mute"] reason: Option<String>,
 ) -> Result<(), Error> {
     do_mute(ctx, &member, duration, reason).await?;
@@ -79,8 +74,7 @@ async fn do_mute(
     duration: humantime::Duration,
     reason: Option<String>,
 ) -> Result<(), Error> {
-    let chrono_dur =
-        Duration::from_std(*duration).map_err(|_| anyhow::anyhow!("Invalid duration"))?;
+    let chrono_dur = Duration::from_std(*duration).map_err(|_| anyhow::anyhow!("Invalid duration"))?;
 
     // validate against the max
     if chrono_dur > Duration::days(TIMEOUT_MAX_DAYS) {

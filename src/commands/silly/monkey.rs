@@ -13,10 +13,7 @@ pub async fn monkey(ctx: Ctx<'_>) -> Result<(), Error> {
 
     let url = format!("https://www.placemonkeys.com/{}/{}?random", w, h);
 
-    let embed = CreateEmbed::default()
-        .title("Monkey!")
-        .color(EMBED_COLOR)
-        .image(&url);
+    let embed = CreateEmbed::default().title("Monkey!").color(EMBED_COLOR).image(&url);
 
     ctx.send(CreateReply::default().embed(embed)).await?;
 

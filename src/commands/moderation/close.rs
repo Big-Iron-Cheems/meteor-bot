@@ -16,10 +16,7 @@ use tracing::error;
     check = "is_thread_channel"
 )]
 pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
-    let mut channel = ctx
-        .guild_channel()
-        .await
-        .context("Failed to fetch channel")?;
+    let mut channel = ctx.guild_channel().await.context("Failed to fetch channel")?;
 
     let embed = CreateEmbed::default()
         .title("Thread Closed")
@@ -29,10 +26,7 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
     ctx.send(CreateReply::default().embed(embed)).await?;
 
     match channel
-        .edit_thread(
-            &ctx.http(),
-            EditThread::default().locked(true).archived(true),
-        )
+        .edit_thread(&ctx.http(), EditThread::default().locked(true).archived(true))
         .await
     {
         Ok(_) => {
@@ -60,9 +54,7 @@ async fn is_thread_channel(ctx: Ctx<'_>) -> Result<bool, Error> {
     };
 
     match channel.kind {
-        ChannelType::PublicThread | ChannelType::PrivateThread | ChannelType::NewsThread => {
-            Ok(true)
-        }
+        ChannelType::PublicThread | ChannelType::PrivateThread | ChannelType::NewsThread => Ok(true),
         _ => {
             ctx.send(
                 CreateReply::default()

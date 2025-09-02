@@ -16,8 +16,7 @@ pub async fn stats(
     let date = match validate_date(date) {
         Ok(d) => d,
         Err(msg) => {
-            ctx.send(CreateReply::default().content(msg).ephemeral(true))
-                .await?;
+            ctx.send(CreateReply::default().content(msg).ephemeral(true)).await?;
             return Ok(());
         }
     };
@@ -74,10 +73,7 @@ struct StatsResponse {
 async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
     let http_client = &ctx.data().http_client;
     let config = &ctx.data().config;
-    let api_base = config
-        .api_base
-        .as_ref()
-        .context("API base URL not configured")?;
+    let api_base = config.api_base.as_ref().context("API base URL not configured")?;
     let api_url = format!("{}/stats?date={}", api_base, date);
     let resp = http_client
         .get(&api_url)

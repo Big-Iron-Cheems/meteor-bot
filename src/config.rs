@@ -44,9 +44,7 @@ impl Config {
             .ok()
             .map(|v| v.trim().to_string())
             .filter(|v| !v.is_empty())
-            .context(format!(
-                "Environment variable '{key}' is required and cannot be empty"
-            ))
+            .context(format!("Environment variable '{key}' is required and cannot be empty"))
     }
 
     /// Parse an optional non-empty string env var

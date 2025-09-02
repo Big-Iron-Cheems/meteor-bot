@@ -5,9 +5,7 @@ use poise::CreateReply;
 #[poise::command(slash_command, category = "Utility", owners_only)]
 pub async fn clear_guild_commands(ctx: Ctx<'_>) -> Result<(), Error> {
     if let Some(guild_id) = ctx.guild_id() {
-        ctx.http()
-            .create_guild_commands(guild_id, &Vec::<()>::new())
-            .await?;
+        ctx.http().create_guild_commands(guild_id, &Vec::<()>::new()).await?;
 
         ctx.send(
             CreateReply::default()

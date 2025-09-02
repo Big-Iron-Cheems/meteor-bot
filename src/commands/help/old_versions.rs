@@ -23,12 +23,8 @@ pub async fn old_versions(
     let button = CreateButton::new_link("https://meteorclient.com/faq/old-versions").label("Guide");
     let action_row = CreateActionRow::Buttons(vec![button]);
 
-    ctx.send(
-        CreateReply::default()
-            .embed(embed)
-            .components(vec![action_row]),
-    )
-    .await?;
+    ctx.send(CreateReply::default().embed(embed).components(vec![action_row]))
+        .await?;
 
     Ok(())
 }

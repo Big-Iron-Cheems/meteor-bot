@@ -33,11 +33,7 @@ pub async fn unmute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
         do_unmute(app_ctx.into(), &member, response.reason).await?;
     } else {
         poise::Context::Application(app_ctx)
-            .send(
-                CreateReply::default()
-                    .content("Unmute cancelled.")
-                    .ephemeral(true),
-            )
+            .send(CreateReply::default().content("Unmute cancelled.").ephemeral(true))
             .await?;
     }
     Ok(())
@@ -79,9 +75,7 @@ async fn do_unmute(ctx: Ctx<'_>, member: &Member, reason: Option<String>) -> Res
         .edit_member(
             &ctx.http(),
             member.user.id,
-            EditMember::new()
-                .enable_communication()
-                .audit_log_reason(&reason),
+            EditMember::new().enable_communication().audit_log_reason(&reason),
         )
         .await
     {

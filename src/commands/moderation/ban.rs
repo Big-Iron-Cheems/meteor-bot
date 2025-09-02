@@ -42,11 +42,7 @@ pub async fn ban_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
         do_ban(app_ctx.into(), &member, response.reason, delete_messages).await?;
     } else {
         poise::Context::Application(app_ctx)
-            .send(
-                CreateReply::default()
-                    .content("Ban cancelled.")
-                    .ephemeral(true),
-            )
+            .send(CreateReply::default().content("Ban cancelled.").ephemeral(true))
             .await?;
     }
     Ok(())
@@ -70,12 +66,7 @@ pub async fn ban(
 }
 
 /// Shared ban logic
-async fn do_ban(
-    ctx: Ctx<'_>,
-    member: &Member,
-    reason: Option<String>,
-    delete_messages: bool,
-) -> Result<(), Error> {
+async fn do_ban(ctx: Ctx<'_>, member: &Member, reason: Option<String>, delete_messages: bool) -> Result<(), Error> {
     let reason = reason.unwrap_or_else(|| "Reason unspecified".to_string());
     let delete_message_days = if delete_messages { 1 } else { 0 };
 
@@ -92,11 +83,7 @@ async fn do_ban(
                     "{} has been banned.\nReason: {}\nDeleted messages: {}",
                     member.mention(),
                     reason,
-                    if delete_messages {
-                        "Yes (last 24h)"
-                    } else {
-                        "No"
-                    }
+                    if delete_messages { "Yes (last 24h)" } else { "No" }
                 ))
                 .color(EMBED_COLOR);
 

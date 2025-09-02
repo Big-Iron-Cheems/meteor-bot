@@ -32,18 +32,13 @@ pub async fn link(
                 .description("Successfully linked your Discord account.")
                 .color(EMBED_COLOR);
 
-            ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-                .await?;
+            ctx.send(CreateReply::default().embed(embed).ephemeral(true)).await?;
         }
         Err(e) => {
             error!("Failed to link Discord account for user {}: {}", user_id, e);
 
-            ctx.send(
-                CreateReply::default()
-                    .content(e.to_string())
-                    .ephemeral(true),
-            )
-            .await?;
+            ctx.send(CreateReply::default().content(e.to_string()).ephemeral(true))
+                .await?;
         }
     }
 

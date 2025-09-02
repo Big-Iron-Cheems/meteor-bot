@@ -11,23 +11,17 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
     };
     if msg.author.id == bot_id
         || msg.guild_id != Some(guild_id)
-        || !msg
-            .content
-            .contains(&ctx.cache.current_user().mention().to_string())
+        || !msg.content.contains(&ctx.cache.current_user().mention().to_string())
     {
         return Ok(());
     }
 
     let content = msg.content.to_lowercase();
-    let greetings = [
-        "hi", "hello", "howdy", "bonjour", "ciao", "hej", "hola", "yo",
-    ];
+    let greetings = ["hi", "hello", "howdy", "bonjour", "ciao", "hej", "hola", "yo"];
 
     for greeting in greetings {
         if content.contains(greeting) {
-            msg.channel_id
-                .say(&ctx.http, format!("{} :)", greeting))
-                .await?;
+            msg.channel_id.say(&ctx.http, format!("{} :)", greeting)).await?;
             return Ok(());
         }
     }
@@ -47,8 +41,7 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
         )
         .await?;
     } else {
-        msg.react(&ctx.http, ReactionType::Unicode("👋".into()))
-            .await?;
+        msg.react(&ctx.http, ReactionType::Unicode("👋".into())).await?;
     }
 
     Ok(())

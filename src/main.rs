@@ -79,12 +79,7 @@ async fn main() {
                 let num_commands = framework.options().commands.len();
                 if config_for_setup.register_guild_commands && config_for_setup.guild_id.is_some() {
                     let guild_id = config_for_setup.guild_id.unwrap();
-                    poise::builtins::register_in_guild(
-                        ctx,
-                        &framework.options().commands,
-                        guild_id,
-                    )
-                    .await?;
+                    poise::builtins::register_in_guild(ctx, &framework.options().commands, guild_id).await?;
                     info!("Registered {} guild slash commands", num_commands);
                 } else {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
@@ -104,8 +99,7 @@ async fn main() {
         })
         .build();
 
-    let intents =
-        GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS;
+    let intents = GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS;
     let mut client = ClientBuilder::new(&config.discord_token, intents)
         .framework(framework)
         .await

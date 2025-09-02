@@ -8,10 +8,7 @@ use serenity::{
 
 /// Tells someone to read the FAQ
 #[poise::command(slash_command, category = "Help")]
-pub async fn faq(
-    ctx: Ctx<'_>,
-    #[description = "User to direct to the FAQ"] user: User,
-) -> Result<(), Error> {
+pub async fn faq(ctx: Ctx<'_>, #[description = "User to direct to the FAQ"] user: User) -> Result<(), Error> {
     let embed = CreateEmbed::default()
         .title("Read the FAQ")
         .description(format!(
@@ -23,12 +20,8 @@ pub async fn faq(
     let button = CreateButton::new_link("https://meteorclient.com/faq").label("FAQ");
     let action_row = CreateActionRow::Buttons(vec![button]);
 
-    ctx.send(
-        CreateReply::default()
-            .embed(embed)
-            .components(vec![action_row]),
-    )
-    .await?;
+    ctx.send(CreateReply::default().embed(embed).components(vec![action_row]))
+        .await?;
 
     Ok(())
 }

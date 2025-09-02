@@ -21,11 +21,7 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
 
     // Start background tasks
     log_err("uptime_handler", uptime_ready_handler(data)).await;
-    log_err(
-        "info_channel_handler",
-        info_channel_ready_handler(ctx, data),
-    )
-    .await;
+    log_err("info_channel_handler", info_channel_ready_handler(ctx, data)).await;
     log_err("metrics_handler", metrics_ready_handler(ctx, data)).await;
 
     Ok(())
@@ -127,10 +123,7 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
     )
     .await;
 
-    info!(
-        "Updating info channels every {} seconds",
-        UPDATE_PERIOD.as_secs()
-    );
+    info!("Updating info channels every {} seconds", UPDATE_PERIOD.as_secs());
     Ok(())
 }
 
@@ -166,12 +159,7 @@ async fn spawn_updater<F, Fut>(
     });
 }
 
-async fn update_channel_name(
-    ctx: &Context,
-    channel_id: ChannelId,
-    count: i64,
-    config: &Config,
-) -> Result<(), Error> {
+async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: i64, config: &Config) -> Result<(), Error> {
     let new_name = format!(
         "{}: {}",
         if Some(channel_id) == config.member_count_id {
@@ -185,9 +173,7 @@ async fn update_channel_name(
     let channel = channel_id.to_channel(&ctx.http).await?;
     if let Channel::Guild(channel) = channel {
         if channel.name != new_name {
-            channel_id
-                .edit(&ctx.http, EditChannel::new().name(new_name))
-                .await?;
+            channel_id.edit(&ctx.http, EditChannel::new().name(new_name)).await?;
         }
     }
 
@@ -245,12 +231,7 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
-    let member_count = state
-        .ctx
-        .cache
-        .guild(guild_id)
-        .map(|g| g.member_count)
-        .unwrap_or(0);
+    let member_count = state.ctx.cache.guild(guild_id).map(|g| g.member_count).unwrap_or(0);
 
     let response = format!(
         "# HELP meteor_discord_users_total Total number of Discord users in our server\n# TYPE meteor_discord_users_total gauge\nmeteor_discord_users_total {}",
@@ -264,10 +245,7 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 }
 
 async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<i64, Error> {
-    let api_base = config
-        .api_base
-        .as_ref()
-        .context("API base URL not configured")?;
+    let api_base = config.api_base.as_ref().context("API base URL not configured")?;
     let response = http_client
         .get(format!("{}/stats", api_base))
         .send()

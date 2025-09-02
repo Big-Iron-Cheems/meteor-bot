@@ -21,11 +21,7 @@ pub async fn event_handler(
             log_err("ready_handler", ready::ready_handler(ctx, data)).await;
         }
         FullEvent::GuildMemberAddition { new_member } => {
-            log_err(
-                "member_add_handler",
-                member_add::member_add_handler(data, new_member),
-            )
-            .await;
+            log_err("member_add_handler", member_add::member_add_handler(data, new_member)).await;
         }
         FullEvent::GuildMemberRemoval { user, .. } => {
             log_err(
@@ -35,11 +31,7 @@ pub async fn event_handler(
             .await;
         }
         FullEvent::Message { new_message } => {
-            log_err(
-                "message_handler",
-                message::message_handler(ctx, data, new_message),
-            )
-            .await;
+            log_err("message_handler", message::message_handler(ctx, data, new_message)).await;
         }
         _ => {
             // Ignore other events
