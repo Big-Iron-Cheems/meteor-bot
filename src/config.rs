@@ -1,8 +1,7 @@
-use anyhow::{Context, Error};
-use dotenvy::dotenv;
+use crate::Error;
 use poise::serenity_prelude as serenity;
+use serde::Deserialize;
 use serenity::all::{ChannelId, EmojiId, GuildId};
-use std::env;
 use tracing::info;
 
 #[allow(dead_code)]
@@ -16,117 +15,91 @@ pub mod constants {
 }
 
 /// Config populated from environment variables
+#[derive(Deserialize, Debug)]
 pub struct Config {
-    /// Discord bot token
+    /// Discord bot token (required)
     pub discord_token: String,
-    /// Base URL for the API
+    /// Base URL for the API (optional)
     pub api_base: Option<String>,
-    /// Backend token for API authentication
+    /// Backend token for API authentication (optional)
     pub backend_token: Option<String>,
-    /// Discord guild ID for guild-specific commands
+    /// Discord guild ID for guild-specific commands (optional)
     pub guild_id: Option<GuildId>,
     /// If true, register commands in the guild specified by guild_id. Otherwise, register globally.
+    #[serde(default)]
     pub register_guild_commands: bool,
-    /// Cope emoji ID
+    /// Cope emoji ID (optional)
     pub cope_nn_id: Option<EmojiId>,
-    /// Member count channel ID
+    /// Member count channel ID (optional)
     pub member_count_id: Option<ChannelId>,
-    /// Download count channel ID
+    /// Download count channel ID (optional)
     pub download_count_id: Option<ChannelId>,
-    /// UptimeRobot URL
+    /// UptimeRobot URL (optional)
     pub uptime_url: Option<String>,
 }
 
 impl Config {
-    /// Ensure the retrieved variable is set
-    fn get_required_var(key: &str) -> Result<String, Error> {
-        env::var(key)
-            .ok()
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty())
-            .context(format!("Environment variable '{key}' is required and cannot be empty"))
-    }
-
-    /// Parse an optional non-empty string env var
-    fn get_optional_nonempty_var(key: &str) -> Option<String> {
-        env::var(key).ok().and_then(|s| {
-            let trimmed = s.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        })
-    }
-
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self, Error> {
-        dotenv().ok();
+        dotenvy::dotenv().ok();
 
-        let discord_token = Self::get_required_var("DISCORD_TOKEN")?;
+        let config = envy::from_env::<Config>()?;
 
-        let api_base = Self::get_optional_nonempty_var("API_BASE").or_else(|| {
+        config.log_feature_status();
+        Ok(config)
+    }
+
+    /// Log the status of optional features based on what's actually configured
+    fn log_feature_status(&self) {
+        if self.api_base.is_none() {
             info!("API base URL not set, backend integration will be disabled");
-            None
-        });
+        } else {
+            info!("API base URL configured: backend integration enabled");
+        }
 
-        let backend_token = Self::get_optional_nonempty_var("BACKEND_TOKEN").or_else(|| {
+        if self.backend_token.is_none() {
             info!("Backend token not set, user join/leave events will not be reported");
-            None
-        });
+        } else {
+            info!("Backend token configured: user join/leave events will be reported");
+        }
 
-        let guild_id = env::var("GUILD_ID")
-            .ok()
-            .and_then(|s| s.parse().ok().map(GuildId::new))
-            .or_else(|| {
-                info!("Guild ID not configured, skipping info channel updates");
-                None
-            });
+        if self.guild_id.is_none() {
+            info!("Guild ID not configured, skipping info channel updates");
+        } else {
+            info!("Guild ID configured: info channel updates enabled");
+        }
 
-        let register_guild_commands = env::var("REGISTER_GUILD_COMMANDS")
-            .ok()
-            .map(|v| v.trim().eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+        if self.cope_nn_id.is_none() {
+            info!("Cope emoji ID not set, defaulting to wave emoji");
+        } else {
+            info!("Cope emoji ID configured");
+        }
 
-        let cope_nn_id = env::var("COPE_NN_ID")
-            .ok()
-            .and_then(|s| s.parse().ok().map(EmojiId::new))
-            .or_else(|| {
-                info!("Cope emoji ID not set, defaulting to wave emoji");
-                None
-            });
+        if self.member_count_id.is_none() {
+            info!("Member count channel ID not set, info channels will not be updated");
+        } else {
+            info!("Member count channel ID configured");
+        }
 
-        let member_count_id = env::var("MEMBER_COUNT_ID")
-            .ok()
-            .and_then(|s| s.parse().ok().map(ChannelId::new))
-            .or_else(|| {
-                info!("Member count channel ID not set, info channels will not be updated");
-                None
-            });
+        if self.download_count_id.is_none() {
+            info!("Download count channel ID not set, info channels will not be updated");
+        } else {
+            info!("Download count channel ID configured");
+        }
 
-        let download_count_id = env::var("DOWNLOAD_COUNT_ID")
-            .ok()
-            .and_then(|s| s.parse().ok().map(ChannelId::new))
-            .or_else(|| {
-                info!("Download count channel ID not set, info channels will not be updated");
-                None
-            });
-
-        let uptime_url = Self::get_optional_nonempty_var("UPTIME_URL").or_else(|| {
+        if self.uptime_url.is_none() {
             info!("Uptime URL not set, uptime monitoring will be disabled");
-            None
-        });
+        } else {
+            info!("Uptime URL configured: uptime monitoring enabled");
+        }
 
-        Ok(Self {
-            discord_token,
-            api_base,
-            backend_token,
-            guild_id,
-            register_guild_commands,
-            cope_nn_id,
-            member_count_id,
-            download_count_id,
-            uptime_url,
-        })
+        info!(
+            "Guild commands will be registered: {}",
+            if self.register_guild_commands {
+                "locally"
+            } else {
+                "globally"
+            }
+        );
     }
 }
