@@ -5,10 +5,7 @@ use serenity::{all::ReactionType, prelude::Mentionable, Context, Message};
 /// Respond to greetings and mentions
 pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Result<(), Error> {
     let bot_id = ctx.cache.current_user().id;
-
-    let Some(guild_id) = data.config.guild_id else {
-        return Ok(());
-    };
+    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
     if msg.author.id == bot_id
         || msg.guild_id != Some(guild_id)
         || !msg.content.contains(&ctx.cache.current_user().mention().to_string())

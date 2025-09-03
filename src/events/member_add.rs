@@ -5,9 +5,12 @@ use serenity::Member;
 
 /// Notify backend of user join
 pub async fn member_add_handler(data: &Data, member: &Member) -> Result<(), Error> {
-    let (Some(token), Some(api_base)) = (&data.config.backend_token, &data.config.api_base) else {
-        return Ok(());
-    };
+    let token = data
+        .config
+        .backend_token
+        .as_ref()
+        .expect("backend_token is always Some here");
+    let api_base = data.config.api_base.as_ref().expect("api_base is always Some here");
 
     let url = format!("{}/discord/userJoined?id={}", api_base, member.user.id);
 

@@ -21,17 +21,23 @@ pub async fn event_handler(
             log_err("ready_handler", ready::ready_handler(ctx, data)).await;
         }
         FullEvent::GuildMemberAddition { new_member } => {
-            log_err("member_add_handler", member_add::member_add_handler(data, new_member)).await;
+            if data.config.backend_token.is_some() && data.config.api_base.is_some() {
+                log_err("member_add_handler", member_add::member_add_handler(data, new_member)).await;
+            }
         }
         FullEvent::GuildMemberRemoval { user, .. } => {
-            log_err(
-                "member_remove_handler",
-                member_remove::member_remove_handler(data, user),
-            )
-            .await;
+            if data.config.backend_token.is_some() && data.config.api_base.is_some() {
+                log_err(
+                    "member_remove_handler",
+                    member_remove::member_remove_handler(data, user),
+                )
+                .await;
+            }
         }
         FullEvent::Message { new_message } => {
-            log_err("message_handler", message::message_handler(ctx, data, new_message)).await;
+            if data.config.guild_id.is_some() {
+                log_err("message_handler", message::message_handler(ctx, data, new_message)).await;
+            }
         }
         _ => {
             // Ignore other events

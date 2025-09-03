@@ -19,19 +19,27 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
     let activity = ActivityData::playing("Meteor Client");
     ctx.set_activity(Some(activity));
 
-    // Start background tasks
-    log_err("uptime_handler", uptime_ready_handler(data)).await;
-    log_err("info_channel_handler", info_channel_ready_handler(ctx, data)).await;
-    log_err("metrics_handler", metrics_ready_handler(ctx, data)).await;
+    if data.config.uptime_url.is_some() {
+        log_err("uptime_handler", uptime_ready_handler(data)).await;
+    }
+
+    if data.config.guild_id.is_some()
+        && data.config.member_count_id.is_some()
+        && data.config.download_count_id.is_some()
+    {
+        log_err("info_channel_handler", info_channel_ready_handler(ctx, data)).await;
+    }
+
+    if data.config.guild_id.is_some() {
+        log_err("metrics_handler", metrics_ready_handler(ctx, data)).await;
+    }
 
     Ok(())
 }
 
 /// Start uptime pinger task for UptimeRobot
 async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
-    let Some(uptime_url) = &data.config.uptime_url else {
-        return Ok(());
-    };
+    let uptime_url = data.config.uptime_url.as_ref().expect("uptime_url is always Some here");
 
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
@@ -81,13 +89,15 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 
 /// Start info channel updater tasks
 async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
-        data.config.guild_id,
-        data.config.member_count_id,
-        data.config.download_count_id,
-    ) else {
-        return Ok(());
-    };
+    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
+    let member_count_id = data
+        .config
+        .member_count_id
+        .expect("member_count_id is always Some here");
+    let download_count_id = data
+        .config
+        .download_count_id
+        .expect("download_count_id is always Some here");
 
     // Download count updater
     spawn_updater(
@@ -189,9 +199,7 @@ struct AppState {
 
 /// Start metrics server for Prometheus
 async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let Some(guild_id) = data.config.guild_id else {
-        return Ok(());
-    };
+    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
 
     if ctx.cache.guild(guild_id).is_none() {
         info!("Guild not found in cache, metrics server will not be started");
@@ -227,9 +235,7 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
 }
 
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
-    let Some(guild_id) = state.config.guild_id else {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    };
+    let guild_id = state.config.guild_id.expect("guild_id is always Some here");
 
     let member_count = state.ctx.cache.guild(guild_id).map(|g| g.member_count).unwrap_or(0);
 

@@ -5,9 +5,12 @@ use serenity::User;
 
 /// Notify backend of user leave
 pub async fn member_remove_handler(data: &Data, user: &User) -> Result<(), Error> {
-    let (Some(token), Some(api_base)) = (&data.config.backend_token, &data.config.api_base) else {
-        return Ok(());
-    };
+    let token = data
+        .config
+        .backend_token
+        .as_ref()
+        .expect("backend_token is always Some here");
+    let api_base = data.config.api_base.as_ref().expect("api_base is always Some here");
 
     let url = format!("{}/discord/userLeft?id={}", api_base, user.id);
 
