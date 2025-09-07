@@ -73,7 +73,7 @@ async fn do_ban(ctx: Ctx<'_>, member: &Member, reason: Option<String>, delete_me
     match ctx
         .guild_id()
         .unwrap()
-        .ban_with_reason(&ctx.http(), member.user.id, delete_message_days, &reason)
+        .ban_with_reason(ctx, member.user.id, delete_message_days, &reason)
         .await
     {
         Ok(_) => {

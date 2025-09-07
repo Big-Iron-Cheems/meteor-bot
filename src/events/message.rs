@@ -18,7 +18,7 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
 
     for greeting in greetings {
         if content.contains(greeting) {
-            msg.channel_id.say(&ctx.http, format!("{} :)", greeting)).await?;
+            msg.channel_id.say(ctx, format!("{} :)", greeting)).await?;
             return Ok(());
         }
     }
@@ -26,7 +26,7 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
     if content.contains("cope") {
         let emoji_id = data.config.cope_nn_id;
         msg.react(
-            &ctx.http,
+            ctx,
             match emoji_id {
                 Some(id) => ReactionType::Custom {
                     animated: false,
@@ -38,7 +38,7 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
         )
         .await?;
     } else {
-        msg.react(&ctx.http, ReactionType::Unicode("👋".into())).await?;
+        msg.react(ctx, ReactionType::Unicode("👋".into())).await?;
     }
 
     Ok(())

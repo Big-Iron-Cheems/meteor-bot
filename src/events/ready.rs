@@ -4,8 +4,8 @@ use axum::{extract::State, http::StatusCode, response::Response, routing::get, R
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
 use serenity::{
-    all::{ActivityData, ChannelId}, builder::EditChannel,
-    Channel,
+    all::{ActivityData, ChannelId},
+    builder::EditChannel,
     Context,
 };
 use std::{sync::Arc, time::Duration};
@@ -155,9 +155,10 @@ async fn spawn_updater<F, Fut>(
             tokio::select! {
                 _ = interval.tick() => {
                     if let Some(count) = get_count().await {
-                        if let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await {
-                            error!("Failed to update channel {:?}: {}", channel_id.get(), e);
-                        }
+                        update_channel_name(&ctx, channel_id, count, &config)
+                            .await
+                            .map_err(|e| error!("Failed to update channel {:?}: {}", channel_id.get(), e))
+                            .ok();
                     }
                 }
                 _ = shutdown_rx.changed() => {
@@ -180,11 +181,14 @@ async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: i64, c
         format_long(count)
     );
 
-    let channel = channel_id.to_channel(&ctx.http).await?;
-    if let Channel::Guild(channel) = channel {
-        if channel.name != new_name {
-            channel_id.edit(&ctx.http, EditChannel::new().name(new_name)).await?;
-        }
+    if channel_id
+        .to_channel(ctx)
+        .await?
+        .guild()
+        .filter(|c| c.name != new_name)
+        .is_some()
+    {
+        channel_id.edit(ctx, EditChannel::new().name(new_name)).await?;
     }
 
     Ok(())

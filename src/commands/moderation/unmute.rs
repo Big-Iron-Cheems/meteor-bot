@@ -73,7 +73,7 @@ async fn do_unmute(ctx: Ctx<'_>, member: &Member, reason: Option<String>) -> Res
         .guild_id()
         .unwrap()
         .edit_member(
-            &ctx.http(),
+            ctx,
             member.user.id,
             EditMember::new().enable_communication().audit_log_reason(&reason),
         )

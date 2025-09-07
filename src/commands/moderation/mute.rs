@@ -114,7 +114,7 @@ async fn do_mute(
         .guild_id()
         .unwrap()
         .edit_member(
-            &ctx.http(),
+            ctx,
             member.user.id,
             EditMember::new()
                 .disable_communication_until_datetime(mute_until.into())

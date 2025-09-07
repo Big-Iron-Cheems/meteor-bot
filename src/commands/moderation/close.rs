@@ -26,7 +26,7 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
     ctx.send(CreateReply::default().embed(embed)).await?;
 
     match channel
-        .edit_thread(&ctx.http(), EditThread::default().locked(true).archived(true))
+        .edit_thread(ctx, EditThread::default().locked(true).archived(true))
         .await
     {
         Ok(_) => {
