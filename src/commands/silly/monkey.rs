@@ -1,7 +1,8 @@
-use crate::{config::constants::EMBED_COLOR, Ctx, Error};
-use poise::{serenity_prelude as serenity, CreateReply};
+use crate::{Ctx, Error, config::constants::EMBED_COLOR};
+use poise::{CreateReply, serenity_prelude as serenity};
 use rand::Rng;
 use serenity::builder::CreateEmbed;
+use url::Url;
 
 /// Sends a random monkey image
 #[poise::command(slash_command, category = "Silly")]
@@ -11,9 +12,15 @@ pub async fn monkey(ctx: Ctx<'_>) -> Result<(), Error> {
         (rng.random_range(200..=1000), rng.random_range(200..=1000))
     };
 
-    let url = format!("https://www.placemonkeys.com/{}/{}?random", w, h);
+    let mut api_url = Url::parse("https://www.placemonkeys.com/")
+        .and_then(|base| base.join(&format!("{w}/{h}")))
+        .expect("failed to build placemonkeys URL");
+    api_url.query_pairs_mut().append_pair("random", "");
 
-    let embed = CreateEmbed::default().title("Monkey!").color(EMBED_COLOR).image(&url);
+    let embed = CreateEmbed::default()
+        .title("Monkey!")
+        .color(EMBED_COLOR)
+        .image(api_url);
 
     ctx.send(CreateReply::default().embed(embed)).await?;
 

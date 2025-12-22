@@ -1,10 +1,10 @@
-use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
+use crate::{AppCtx, Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
-    model::{guild::Member, user::User}, prelude::Mentionable,
-    CreateEmbed,
-    EditMember,
+    CreateEmbed, EditMember,
+    model::{guild::Member, user::User},
+    prelude::Mentionable,
 };
 use tracing::error;
 
@@ -88,7 +88,7 @@ async fn do_unmute(ctx: Ctx<'_>, member: &Member, reason: Option<String>) -> Res
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error unmuting member {}: {}", member.user.id, e);
+            error!("Error unmuting member {}: {e}", member.user.id);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while unmuting the member.")

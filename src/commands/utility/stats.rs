@@ -1,8 +1,7 @@
-use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{CreateReply, serenity_prelude as serenity};
 use regex::Regex;
-use serde::Deserialize;
 use serenity::builder::CreateEmbed;
 use std::sync::LazyLock;
 use tracing::error;
@@ -24,7 +23,7 @@ pub async fn stats(
     let stats = match fetch_stats(ctx, &date).await {
         Ok(stats) => stats,
         Err(e) => {
-            error!("Error fetching stats for {}: {}", date, e);
+            error!("Error fetching stats for {date}: {e}");
             ctx.send(
                 CreateReply::default()
                     .content("Failed to fetch stats for this date.")
@@ -62,7 +61,7 @@ fn validate_date(date: Option<String>) -> Result<String, &'static str> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct StatsResponse {
     date: String,
     joins: u32,
@@ -74,9 +73,10 @@ async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
     let http_client = &ctx.data().http_client;
     let config = &ctx.data().config;
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
-    let api_url = format!("{}/stats?date={}", api_base, date);
+    let mut url = api_base.join("stats").expect("failed to join URL path");
+    url.query_pairs_mut().append_pair("date", date);
     let resp = http_client
-        .get(&api_url)
+        .get(url)
         .send()
         .await
         .context("Failed to send stats request")?;

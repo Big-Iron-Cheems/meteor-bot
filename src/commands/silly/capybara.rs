@@ -1,11 +1,14 @@
-use crate::{commands::silly::fetch_image_url, config::constants::EMBED_COLOR, Ctx, Error};
-use poise::{serenity_prelude as serenity, CreateReply};
+use crate::{Ctx, Error, commands::silly::fetch_image_url, config::constants::EMBED_COLOR};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::builder::CreateEmbed;
+use url::Url;
 
 /// Sends a random capybara image
 #[poise::command(slash_command, category = "Silly")]
 pub async fn capybara(ctx: Ctx<'_>) -> Result<(), Error> {
-    if let Ok(url) = fetch_image_url("https://api.capy.lol/v1/capybara?json=true", "data/url").await {
+    let api_url = Url::parse_with_params("https://api.capy.lol/v1/capybara", [("json", "true")])
+        .expect("failed to parse capybara API URL");
+    if let Ok(url) = fetch_image_url(api_url, "data/url").await {
         let embed = CreateEmbed::default().title("Capybara!").color(EMBED_COLOR).image(url);
         ctx.send(CreateReply::default().embed(embed)).await?;
     } else {

@@ -1,11 +1,11 @@
-use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
+use crate::{AppCtx, Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use chrono::{Duration, Utc};
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
-    model::{guild::Member, user::User}, prelude::Mentionable,
-    CreateEmbed,
-    EditMember,
+    CreateEmbed, EditMember,
+    model::{guild::Member, user::User},
+    prelude::Mentionable,
 };
 use tracing::error;
 
@@ -81,8 +81,7 @@ async fn do_mute(
         ctx.send(
             CreateReply::default()
                 .content(format!(
-                    "Invalid duration: exceeds the maximum allowed value of {} days.",
-                    TIMEOUT_MAX_DAYS
+                    "Invalid duration: exceeds the maximum allowed value of {TIMEOUT_MAX_DAYS} days."
                 ))
                 .ephemeral(true),
         )
@@ -92,20 +91,16 @@ async fn do_mute(
 
     let reason = reason.unwrap_or_else(|| "Reason unspecified".to_string());
 
-    if let Some(timeout_until) = member.communication_disabled_until {
-        if timeout_until > Utc::now().into() {
-            ctx.send(
-                CreateReply::default()
-                    .content(format!(
-                        "{} is already muted until {}.",
-                        member.mention(),
-                        timeout_until,
-                    ))
-                    .ephemeral(true),
-            )
-            .await?;
-            return Ok(());
-        }
+    if let Some(timeout_until) = member.communication_disabled_until
+        && timeout_until > Utc::now().into()
+    {
+        ctx.send(
+            CreateReply::default()
+                .content(format!("{} is already muted until {timeout_until}.", member.mention()))
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
     }
 
     let mute_until = Utc::now() + chrono_dur;
@@ -135,7 +130,7 @@ async fn do_mute(
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error muting member {}: {}", member.user.id, e);
+            error!("Error muting member {}: {e}", member.user.id);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while muting the member.")

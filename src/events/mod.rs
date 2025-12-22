@@ -4,8 +4,8 @@ mod message;
 mod ready;
 
 use crate::{Data, Error};
-use poise::{serenity_prelude as serenity, FrameworkContext};
-use serenity::{all::FullEvent, Context};
+use poise::{FrameworkContext, serenity_prelude as serenity};
+use serenity::{Context, all::FullEvent};
 use tracing::{error, info};
 
 /// Main event handler
@@ -53,6 +53,6 @@ where
     F: Future<Output = Result<T, Error>>,
 {
     if let Err(e) = fut.await {
-        error!("Error in {}: {}", label, e);
+        error!("Error in {label}: {e}");
     }
 }

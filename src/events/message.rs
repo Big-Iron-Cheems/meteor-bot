@@ -1,6 +1,6 @@
 use crate::{Data, Error};
 use poise::serenity_prelude as serenity;
-use serenity::{all::ReactionType, prelude::Mentionable, Context, Message};
+use serenity::{Context, Message, all::ReactionType, prelude::Mentionable};
 
 /// Respond to greetings and mentions
 pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Result<(), Error> {
@@ -18,7 +18,7 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Resul
 
     for greeting in greetings {
         if content.contains(greeting) {
-            msg.channel_id.say(ctx, format!("{} :)", greeting)).await?;
+            msg.channel_id.say(ctx, format!("{greeting} :)")).await?;
             return Ok(());
         }
     }

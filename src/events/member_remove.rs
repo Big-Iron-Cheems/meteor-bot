@@ -3,6 +3,11 @@ use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use serenity::User;
 
+#[derive(serde::Serialize)]
+struct UserLeftParams {
+    id: serenity::UserId,
+}
+
 /// Notify backend of user leave
 pub async fn member_remove_handler(data: &Data, user: &User) -> Result<(), Error> {
     let token = data
@@ -12,10 +17,9 @@ pub async fn member_remove_handler(data: &Data, user: &User) -> Result<(), Error
         .expect("backend_token is always Some here");
     let api_base = data.config.api_base.as_ref().expect("api_base is always Some here");
 
-    let url = format!("{}/discord/userLeft?id={}", api_base, user.id);
-
     data.http_client
-        .post(&url)
+        .post(api_base.join("discord/userLeft").expect("failed to join URL path"))
+        .query(&UserLeftParams { id: user.id })
         .header("Authorization", token)
         .send()
         .await

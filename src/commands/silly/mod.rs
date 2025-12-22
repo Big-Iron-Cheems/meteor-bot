@@ -11,7 +11,7 @@ pub use monkey::monkey;
 pub use panda::panda;
 
 /// Fetches an image URL from a given API endpoint and JSON path
-async fn fetch_image_url(url: &str, json_path: &str) -> anyhow::Result<String> {
+async fn fetch_image_url(url: url::Url, json_path: &str) -> anyhow::Result<String> {
     let resp = reqwest::get(url).await?;
     let json = resp.json::<serde_json::Value>().await?;
 

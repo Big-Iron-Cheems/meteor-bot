@@ -1,10 +1,10 @@
-use crate::{config::constants::EMBED_COLOR, AppCtx, Ctx, Error};
+use crate::{AppCtx, Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
+    CreateEmbed,
     model::{guild::Member, user::User},
     prelude::Mentionable,
-    CreateEmbed,
 };
 use tracing::error;
 
@@ -80,9 +80,8 @@ async fn do_ban(ctx: Ctx<'_>, member: &Member, reason: Option<String>, delete_me
             let embed = CreateEmbed::default()
                 .title("Member Banned")
                 .description(format!(
-                    "{} has been banned.\nReason: {}\nDeleted messages: {}",
+                    "{} has been banned.\nReason: {reason}\nDeleted messages: {}",
                     member.mention(),
-                    reason,
                     if delete_messages { "Yes (last 24h)" } else { "No" }
                 ))
                 .color(EMBED_COLOR);
@@ -90,7 +89,7 @@ async fn do_ban(ctx: Ctx<'_>, member: &Member, reason: Option<String>, delete_me
             ctx.send(CreateReply::default().embed(embed)).await?;
         }
         Err(e) => {
-            error!("Error banning member {}: {}", member.user.id, e);
+            error!("Error banning member {}: {e}", member.user.id);
             ctx.send(
                 CreateReply::default()
                     .content("An error occurred while banning the member.")

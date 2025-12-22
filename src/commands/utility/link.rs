@@ -1,10 +1,7 @@
-use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
-use poise::{serenity_prelude as serenity, CreateReply};
-use serde::Deserialize;
-use serde_json::Value;
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::builder::CreateEmbed;
-use std::collections::HashMap;
 use tracing::error;
 
 /// Links your Discord account to your Meteor account
@@ -35,7 +32,7 @@ pub async fn link(
             ctx.send(CreateReply::default().embed(embed).ephemeral(true)).await?;
         }
         Err(e) => {
-            error!("Failed to link Discord account for user {}: {}", user_id, e);
+            error!("Failed to link Discord account for user {user_id}: {e}");
 
             ctx.send(CreateReply::default().content(e.to_string()).ephemeral(true))
                 .await?;
@@ -45,10 +42,15 @@ pub async fn link(
     Ok(())
 }
 
-#[derive(Deserialize)]
-struct ApiResponse {
-    #[serde(flatten)]
-    data: HashMap<String, Value>,
+#[derive(serde::Serialize)]
+struct LinkDiscordParams<'a> {
+    id: &'a str,
+    token: &'a str,
+}
+
+#[derive(serde::Deserialize)]
+struct BackendError {
+    error: String,
 }
 
 async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Result<(), Error> {
@@ -57,32 +59,33 @@ async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Resu
         .config
         .api_base
         .as_ref()
-        .context("API base URL is not set. Cannot link Discord account.")?;
-    let api_url = format!("{}/account/linkDiscord", api_base);
-    let form_data = [("id", user_id), ("token", token)];
+        .context("API base URL not configured")?;
+
     let backend_token = ctx
         .data()
         .config
         .backend_token
         .as_ref()
-        .context("Backend token is not set. Cannot link Discord account.")?;
+        .context("Backend token not configured")?;
+
     let resp = ctx
         .data()
         .http_client
-        .post(&api_url)
+        .post(api_base.join("account/linkDiscord").expect("failed to join URL path"))
         .header("Authorization", backend_token)
-        .form(&form_data)
+        .query(&LinkDiscordParams { id: user_id, token })
         .send()
         .await
-        .context("Failed to send request to link Discord account.")?;
-    let json_response = resp
-        .json::<ApiResponse>()
-        .await
-        .context("Failed to decode response from backend.")?;
-    if json_response.data.contains_key("error") {
-        anyhow::bail!(
-            "Failed to link your Discord account. Try generating a new token by refreshing the account page and clicking the link button again."
-        );
+        .context("Failed to send link request")?;
+
+    if resp.status().is_success() {
+        return Ok(());
     }
-    Ok(())
+
+    let backend_error = resp
+        .json::<BackendError>()
+        .await
+        .context("Failed to decode backend error response")?;
+
+    anyhow::bail!(backend_error.error);
 }

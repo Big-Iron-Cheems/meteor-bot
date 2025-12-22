@@ -1,11 +1,13 @@
+#![warn(clippy::all)]
+
 use crate::config::Config;
-use poise::{serenity_prelude as serenity, FrameworkError};
+use poise::{FrameworkError, serenity_prelude as serenity};
 use serenity::{
-    all::{ShardId, ShardRunnerInfo}, ClientBuilder,
-    GatewayIntents,
+    ClientBuilder, GatewayIntents,
+    all::{ShardId, ShardRunnerInfo},
 };
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{watch, watch::Receiver, Mutex};
+use tokio::sync::{Mutex, watch, watch::Receiver};
 use tracing::{error, info};
 
 mod commands;
@@ -51,14 +53,14 @@ async fn main() {
                 match error {
                     FrameworkError::Setup { error, .. } => {
                         error!(?error, "Failed to start bot");
-                        panic!("Failed to start bot: {:?}", error);
+                        panic!("Failed to start bot: {error:?}");
                     }
                     FrameworkError::Command { error, ctx, .. } => {
-                        info!("Error in command `{}`: {:?}", ctx.command().name, error);
+                        info!("Error in command `{}`: {error:?}", ctx.command().name);
                     }
                     error => {
                         if let Err(e) = poise::builtins::on_error(error).await {
-                            info!("Error while handling error: {}", e);
+                            info!("Error while handling error: {e}");
                         }
                     }
                 }
@@ -80,10 +82,10 @@ async fn main() {
                 if config_for_setup.register_guild_commands && config_for_setup.guild_id.is_some() {
                     let guild_id = config_for_setup.guild_id.unwrap();
                     poise::builtins::register_in_guild(ctx, &framework.options().commands, guild_id).await?;
-                    info!("Registered {} guild slash commands", num_commands);
+                    info!("Registered {num_commands} guild slash commands");
                 } else {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                    info!("Registered {} global slash commands", num_commands);
+                    info!("Registered {num_commands} global slash commands");
                 }
 
                 // Initialize shared data
@@ -108,7 +110,7 @@ async fn main() {
     tokio::select! {
         result = client.start() => {
             if let Err(err) = result {
-                error!("Client error: {}", err);
+                error!("Client error: {err}");
             }
         }
         _ = tokio::signal::ctrl_c() => {

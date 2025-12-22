@@ -1,7 +1,8 @@
-use crate::{commands::silly::fetch_image_url, config::constants::EMBED_COLOR, Ctx, Error};
-use poise::{serenity_prelude as serenity, CreateReply};
+use crate::{Ctx, Error, commands::silly::fetch_image_url, config::constants::EMBED_COLOR};
+use poise::{CreateReply, serenity_prelude as serenity};
 use rand::Rng;
 use serenity::builder::CreateEmbed;
+use url::Url;
 
 /// Sends a random panda image
 #[poise::command(slash_command, category = "Silly")]
@@ -11,9 +12,12 @@ pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
     } else {
         ("panda", "Panda!")
     };
-    let api_url = format!("https://some-random-api.com/img/{}", animal);
 
-    if let Ok(url) = fetch_image_url(&api_url, "link").await {
+    let api_url = Url::parse("https://some-random-api.com/img/")
+        .and_then(|base| base.join(animal))
+        .expect("failed to build panda API URL");
+
+    if let Ok(url) = fetch_image_url(api_url, "link").await {
         let embed = CreateEmbed::default().title(title).color(EMBED_COLOR).image(url);
         ctx.send(CreateReply::default().embed(embed)).await?;
     } else {

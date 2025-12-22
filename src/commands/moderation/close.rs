@@ -1,6 +1,6 @@
-use crate::{config::constants::EMBED_COLOR, Ctx, Error};
+use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
     builder::{CreateEmbed, EditThread},
     model::channel::ChannelType,
@@ -33,7 +33,7 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
             // Thread successfully closed - embed was already sent
         }
         Err(e) => {
-            error!("Error locking thread {}: {}", channel.id, e);
+            error!("Error locking thread {}: {e}", channel.id);
             ctx.send(
                 CreateReply::default()
                     .content("Failed to lock/archive: this thread may already be archived.")

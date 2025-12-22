@@ -1,12 +1,12 @@
-use crate::{config::Config, events::log_err, Data, Error};
+use crate::{Data, Error, config::Config, events::log_err};
 use anyhow::Context as AnyhowContext;
-use axum::{extract::State, http::StatusCode, response::Response, routing::get, Router};
+use axum::{Router, extract::State, http::StatusCode, response::Response, routing::get};
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
 use serenity::{
+    Context,
     all::{ActivityData, ChannelId},
     builder::EditChannel,
-    Context,
 };
 use std::{sync::Arc, time::Duration};
 use tokio::{net::TcpListener, sync::watch::Receiver, time};
@@ -66,14 +66,14 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
                         }
                     };
 
-                    let url = if uptime_url.ends_with("ping=") {
-                        format!("{}{}", uptime_url, latency_ms)
+                    let url = if uptime_url.as_str().ends_with("ping=") {
+                        format!("{uptime_url}{latency_ms}")
                     } else {
-                        uptime_url.clone()
+                        uptime_url.to_string()
                     };
 
-                    if let Err(e) = http_client.get(&url).send().await {
-                        error!("Failed to send uptime request: {}", e);
+                    if let Err(e) = http_client.get(url).send().await {
+                        error!("Failed to send uptime request: {e}");
                     }
                 }
                 _ = shutdown_rx.changed() => {
@@ -154,11 +154,8 @@ async fn spawn_updater<F, Fut>(
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    if let Some(count) = get_count().await {
-                        update_channel_name(&ctx, channel_id, count, &config)
-                            .await
-                            .map_err(|e| error!("Failed to update channel {:?}: {}", channel_id.get(), e))
-                            .ok();
+                    if let Some(count) = get_count().await && let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await {
+                        error!("Failed to update channel {:?}: {e}", channel_id.get());
                     }
                 }
                 _ = shutdown_rx.changed() => {
@@ -231,7 +228,7 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
             })
             .await
         {
-            error!("Metrics server error: {}", e);
+            error!("Metrics server error: {e}");
         }
     });
 
@@ -244,8 +241,7 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
     let member_count = state.ctx.cache.guild(guild_id).map(|g| g.member_count).unwrap_or(0);
 
     let response = format!(
-        "# HELP meteor_discord_users_total Total number of Discord users in our server\n# TYPE meteor_discord_users_total gauge\nmeteor_discord_users_total {}",
-        member_count
+        "# HELP meteor_discord_users_total Total number of Discord users in our server\n# TYPE meteor_discord_users_total gauge\nmeteor_discord_users_total {member_count}"
     );
 
     Ok(Response::builder()
@@ -256,8 +252,11 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 
 async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<i64, Error> {
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
+    let url = api_base
+        .join("stats")
+        .context("failed to join API base URL with stats path")?;
     let response = http_client
-        .get(format!("{}/stats", api_base))
+        .get(url)
         .send()
         .await
         .context("Failed to send request to fetch download stats")?;

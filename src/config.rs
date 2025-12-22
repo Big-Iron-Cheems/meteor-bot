@@ -1,6 +1,6 @@
 use crate::Error;
 use poise::serenity_prelude as serenity;
-use serde::Deserialize;
+use serde_with::DisplayFromStr;
 use serenity::all::{ChannelId, EmojiId, GuildId};
 use tracing::info;
 
@@ -15,12 +15,14 @@ pub mod constants {
 }
 
 /// Config populated from environment variables
-#[derive(Deserialize, Debug)]
+#[serde_with::serde_as]
+#[derive(serde::Deserialize, Debug)]
 pub struct Config {
     /// Discord bot token (required)
     pub discord_token: String,
     /// Base URL for the API (optional)
-    pub api_base: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub api_base: Option<url::Url>,
     /// Backend token for API authentication (optional)
     pub backend_token: Option<String>,
     /// Discord guild ID for guild-specific commands (optional)
@@ -35,7 +37,8 @@ pub struct Config {
     /// Download count channel ID (optional)
     pub download_count_id: Option<ChannelId>,
     /// UptimeRobot URL (optional)
-    pub uptime_url: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub uptime_url: Option<url::Url>,
 }
 
 impl Config {
