@@ -26,14 +26,14 @@ pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message, guild_id
         let emoji_id = data.config.cope_nn_id;
         msg.react(
             ctx,
-            match emoji_id {
-                Some(id) => ReactionType::Custom {
+            emoji_id.map_or_else(
+                || ReactionType::Unicode("👋".into()),
+                |id| ReactionType::Custom {
                     animated: false,
                     id,
                     name: Some("cope".into()),
                 },
-                None => ReactionType::Unicode("👋".into()),
-            },
+            ),
         )
         .await?;
     } else {

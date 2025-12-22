@@ -46,7 +46,7 @@ impl Config {
     pub fn from_env() -> Result<Self, Error> {
         dotenvy::dotenv().ok();
 
-        let config = envy::from_env::<Config>()?;
+        let config = envy::from_env::<Self>()?;
 
         config.log_feature_status();
         Ok(config)
