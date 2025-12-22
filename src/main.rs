@@ -60,9 +60,7 @@ async fn main() -> Result<(), Error> {
                 }
             })
         },
-        event_handler: |ctx, event, framework, data| {
-            Box::pin(async move { events::event_handler(ctx, event, framework, data).await })
-        },
+        event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
         ..Default::default()
     };
 

@@ -1,4 +1,4 @@
-use crate::{Data, Error, config::Config, events::log_err};
+use crate::{Data, Error, config::Config};
 use anyhow::Context as AnyhowContext;
 use axum::{Router, extract::State, http::StatusCode, response::Response, routing::get};
 use poise::serenity_prelude as serenity;
@@ -12,9 +12,8 @@ use url::Url;
 static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
 static UPTIME_INTERVAL: Duration = Duration::from_secs(60); // 60 seconds
 
-pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let activity = ActivityData::playing("Meteor Client");
-    ctx.set_activity(Some(activity));
+pub fn ready_handler(ctx: &Context, data: &Data) {
+    ctx.set_activity(Some(ActivityData::playing("Meteor Client")));
 
     if let Some(uptime_url) = data.config.uptime_url.as_ref() {
         uptime_ready_handler(data, uptime_url);
@@ -29,13 +28,11 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
     }
 
     if let Some(guild_id) = data.config.guild_id {
-        log_err("metrics_handler", metrics_ready_handler(ctx, data, guild_id)).await;
+        metrics_ready_handler(ctx, data, guild_id);
     }
-
-    Ok(())
 }
 
-/// Start uptime pinger task for `UptimeRobot`
+/// Uptime pinger task
 fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
@@ -54,12 +51,7 @@ fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
                             .values()
                             .filter_map(|r| r.latency.map(|d| d.as_millis()))
                             .fold((0u128, 0u128), |(sum, count), latency| (sum + latency, count + 1));
-
-                        if count == 0 {
-                            0
-                        } else {
-                            sum / count
-                        }
+                        if count == 0 { 0 } else { sum / count }
                     };
 
                     let url = if uptime_url.as_str().ends_with("ping=") {
@@ -81,7 +73,7 @@ fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
     });
 }
 
-/// Start info channel updater tasks
+/// Info channel updater tasks
 fn info_channel_ready_handler(
     ctx: &Context,
     data: &Data,
@@ -124,7 +116,7 @@ fn info_channel_ready_handler(
     info!("Updating info channels every {} seconds", UPDATE_PERIOD.as_secs());
 }
 
-/// Spawn a task to periodically update a channel name with a count
+/// Spawn periodic updater task
 fn spawn_updater<F, Fut>(
     ctx: Context,
     channel_id: ChannelId,
@@ -141,7 +133,9 @@ fn spawn_updater<F, Fut>(
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    if let Some(count) = get_count().await && let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await {
+                    if let Some(count) = get_count().await &&
+                        let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await
+                    {
                         error!("Failed to update channel {:?}: {e}", channel_id.get());
                     }
                 }
@@ -154,6 +148,7 @@ fn spawn_updater<F, Fut>(
     });
 }
 
+/// Update channel name
 async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: u64, config: &Config) -> Result<(), Error> {
     let new_name = format!(
         "{}: {}",
@@ -178,18 +173,17 @@ async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: u64, c
     Ok(())
 }
 
-/// Application state for Axum
+/// Axum app state
 #[derive(Clone)]
 struct AppState {
     ctx: Context,
     config: Arc<Config>,
 }
 
-/// Start metrics server for Prometheus
-async fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) -> Result<(), Error> {
+/// Metrics server
+fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
     if ctx.cache.guild(guild_id).is_none() {
-        info!("Guild not found in cache, metrics server will not be started");
-        return Ok(());
+        return;
     }
 
     let app_state = AppState {
@@ -201,11 +195,17 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) ->
         .route("/metrics", get(prometheus_metrics))
         .with_state(app_state);
 
-    let listener = TcpListener::bind("0.0.0.0:9400").await?;
-    info!("Providing metrics on :9400/metrics");
-
     let mut shutdown_rx = data.shutdown_rx.clone();
+
     tokio::spawn(async move {
+        let listener = match TcpListener::bind("0.0.0.0:9400").await {
+            Ok(l) => l,
+            Err(e) => {
+                error!("Failed to bind metrics listener: {e}");
+                return;
+            }
+        };
+        info!("Providing metrics on :9400/metrics");
         if let Err(e) = axum::serve(listener, app)
             .with_graceful_shutdown(async move {
                 let _ = shutdown_rx.changed().await;
@@ -216,17 +216,16 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) ->
             error!("Metrics server error: {e}");
         }
     });
-
-    Ok(())
 }
 
+/// Prometheus handler
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
     let guild_id = state.config.guild_id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-
     let member_count = state.ctx.cache.guild(guild_id).map_or(0, |g| g.member_count);
-
     let response = format!(
-        "# HELP meteor_discord_users_total Total number of Discord users in our server\n# TYPE meteor_discord_users_total gauge\nmeteor_discord_users_total {member_count}"
+        "# HELP meteor_discord_users_total Total number of Discord users in our server\n\
+         # TYPE meteor_discord_users_total gauge\n\
+         meteor_discord_users_total {member_count}"
     );
 
     Response::builder()
@@ -235,26 +234,17 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+/// Download count
 async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<u64, Error> {
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
-    let url = api_base
-        .join("stats")
-        .context("failed to join API base URL with stats path")?;
-    let response = http_client
-        .get(url)
-        .send()
-        .await
-        .context("Failed to send request to fetch download stats")?;
-    let stats = response
-        .json::<Value>()
-        .await
-        .context("Failed to decode download stats response")?;
-    let downloads = stats["downloads"]
-        .as_u64()
-        .context("Failed to parse downloads as number")?;
+    let url = api_base.join("stats")?;
+    let response = http_client.get(url).send().await?;
+    let stats = response.json::<Value>().await?;
+    let downloads = stats["downloads"].as_u64().context("Failed to parse downloads")?;
     Ok(downloads)
 }
 
+/// Format large numbers
 #[allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,

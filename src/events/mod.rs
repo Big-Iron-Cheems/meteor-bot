@@ -18,7 +18,7 @@ pub async fn event_handler(
     match event {
         FullEvent::Ready { data_about_bot, .. } => {
             info!("Logged in as {}", data_about_bot.user.name);
-            log_err("ready_handler", ready::ready_handler(ctx, data)).await;
+            ready::ready_handler(ctx, data);
         }
         FullEvent::GuildMemberAddition { new_member } => {
             if let (Some(token), Some(api_base)) = (data.config.backend_token.as_ref(), data.config.api_base.as_ref()) {
