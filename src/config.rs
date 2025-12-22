@@ -1,7 +1,7 @@
 use crate::Error;
 use poise::serenity_prelude as serenity;
 use serde_with::DisplayFromStr;
-use serenity::all::{ChannelId, EmojiId, GuildId};
+use serenity::{ChannelId, EmojiId, GuildId};
 use tracing::info;
 
 #[allow(dead_code, clippy::unreadable_literal)]

@@ -1,6 +1,6 @@
 use crate::{Data, Error};
 use poise::serenity_prelude as serenity;
-use serenity::{Context, GuildId, Message, all::ReactionType, prelude::Mentionable};
+use serenity::{Context, GuildId, Mentionable, Message, ReactionType};
 
 /// Respond to greetings and mentions
 pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message, guild_id: GuildId) -> Result<(), Error> {

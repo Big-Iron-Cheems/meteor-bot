@@ -3,11 +3,7 @@ use anyhow::Context as AnyhowContext;
 use axum::{Router, extract::State, http::StatusCode, response::Response, routing::get};
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
-use serenity::{
-    Context,
-    all::{ActivityData, ChannelId, GuildId},
-    builder::EditChannel,
-};
+use serenity::{ActivityData, ChannelId, Context, EditChannel, GuildId};
 use std::{sync::Arc, time::Duration};
 use tokio::{net::TcpListener, sync::watch::Receiver, time};
 use tracing::{error, info};
@@ -21,7 +17,7 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
     ctx.set_activity(Some(activity));
 
     if let Some(uptime_url) = data.config.uptime_url.as_ref() {
-        log_err("uptime_handler", uptime_ready_handler(data, uptime_url)).await;
+        uptime_ready_handler(data, uptime_url);
     }
 
     if let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
@@ -29,11 +25,7 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
         data.config.member_count_id,
         data.config.download_count_id,
     ) {
-        log_err(
-            "info_channel_handler",
-            info_channel_ready_handler(ctx, data, guild_id, member_count_id, download_count_id),
-        )
-        .await;
+        info_channel_ready_handler(ctx, data, guild_id, member_count_id, download_count_id);
     }
 
     if let Some(guild_id) = data.config.guild_id {
@@ -44,7 +36,7 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
 }
 
 /// Start uptime pinger task for `UptimeRobot`
-async fn uptime_ready_handler(data: &Data, uptime_url: &Url) -> Result<(), Error> {
+fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
     let mut shutdown_rx = data.shutdown_rx.clone();
@@ -87,18 +79,16 @@ async fn uptime_ready_handler(data: &Data, uptime_url: &Url) -> Result<(), Error
             }
         }
     });
-
-    Ok(())
 }
 
 /// Start info channel updater tasks
-async fn info_channel_ready_handler(
+fn info_channel_ready_handler(
     ctx: &Context,
     data: &Data,
     guild_id: GuildId,
     member_count_id: ChannelId,
     download_count_id: ChannelId,
-) -> Result<(), Error> {
+) {
     // Download count updater
     spawn_updater(
         ctx.clone(),
@@ -114,8 +104,7 @@ async fn info_channel_ready_handler(
         },
         data.shutdown_rx.clone(),
         data.config.clone(),
-    )
-    .await;
+    );
 
     // Member count updater
     spawn_updater(
@@ -130,15 +119,13 @@ async fn info_channel_ready_handler(
         },
         data.shutdown_rx.clone(),
         data.config.clone(),
-    )
-    .await;
+    );
 
     info!("Updating info channels every {} seconds", UPDATE_PERIOD.as_secs());
-    Ok(())
 }
 
 /// Spawn a task to periodically update a channel name with a count
-async fn spawn_updater<F, Fut>(
+fn spawn_updater<F, Fut>(
     ctx: Context,
     channel_id: ChannelId,
     mut get_count: F,

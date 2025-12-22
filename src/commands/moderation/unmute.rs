@@ -1,11 +1,7 @@
 use crate::{AppCtx, Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
-use serenity::{
-    CreateEmbed, EditMember,
-    model::{guild::Member, user::User},
-    prelude::Mentionable,
-};
+use serenity::{CreateEmbed, EditMember, Member, Mentionable, User};
 use tracing::error;
 
 #[derive(poise::Modal)]

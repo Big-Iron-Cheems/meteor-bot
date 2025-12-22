@@ -1,7 +1,7 @@
 use crate::{Ctx, Error, commands::silly::fetch_image_url, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
-use serenity::builder::CreateEmbed;
+use serenity::CreateEmbed;
 use url::Url;
 
 /// Sends a random cat image

@@ -5,7 +5,7 @@ mod ready;
 
 use crate::{Data, Error};
 use poise::{FrameworkContext, serenity_prelude as serenity};
-use serenity::{Context, all::FullEvent};
+use serenity::{Context, FullEvent};
 use tracing::{error, info};
 
 /// Main event handler

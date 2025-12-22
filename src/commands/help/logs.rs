@@ -1,10 +1,6 @@
 use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use poise::{CreateReply, serenity_prelude as serenity};
-use serenity::{
-    builder::{CreateActionRow, CreateButton, CreateEmbed},
-    model::user::User,
-    prelude::Mentionable,
-};
+use serenity::{CreateActionRow, CreateButton, CreateEmbed, Mentionable, User};
 
 /// Tells someone how to find the Minecraft logs
 #[poise::command(slash_command, category = "Help")]

@@ -1,7 +1,7 @@
 use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
-use serenity::builder::CreateEmbed;
+use serenity::CreateEmbed;
 use tracing::error;
 
 /// Links your Discord account to your Meteor account

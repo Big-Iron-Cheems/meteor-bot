@@ -1,10 +1,7 @@
 use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
-use serenity::{
-    builder::{CreateEmbed, EditThread},
-    model::channel::ChannelType,
-};
+use serenity::{ChannelType, CreateEmbed, EditThread};
 use tracing::error;
 
 /// Locks the current forum post

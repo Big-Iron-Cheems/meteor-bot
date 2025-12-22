@@ -2,7 +2,7 @@ use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
 use regex::Regex;
-use serenity::builder::CreateEmbed;
+use serenity::CreateEmbed;
 use std::sync::LazyLock;
 use tracing::error;
 
