@@ -1,11 +1,10 @@
 use crate::{Data, Error};
 use poise::serenity_prelude as serenity;
-use serenity::{Context, Message, all::ReactionType, prelude::Mentionable};
+use serenity::{Context, GuildId, Message, all::ReactionType, prelude::Mentionable};
 
 /// Respond to greetings and mentions
-pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message) -> Result<(), Error> {
+pub async fn message_handler(ctx: &Context, data: &Data, msg: &Message, guild_id: GuildId) -> Result<(), Error> {
     let bot_id = ctx.cache.current_user().id;
-    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
     if msg.author.id == bot_id
         || msg.guild_id != Some(guild_id)
         || !msg.content.contains(&ctx.cache.current_user().mention().to_string())

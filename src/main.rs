@@ -1,11 +1,10 @@
-#![warn(clippy::all)]
+#![warn(clippy::all, clippy::pedantic)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::config::Config;
+use anyhow::Context;
 use poise::{FrameworkError, serenity_prelude as serenity};
-use serenity::{
-    ClientBuilder, GatewayIntents,
-    all::{ShardId, ShardRunnerInfo},
-};
+use serenity::{ClientBuilder, GatewayIntents, ShardId, ShardRunnerInfo};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{Mutex, watch, watch::Receiver};
 use tracing::{error, info};
@@ -30,18 +29,12 @@ pub struct Data {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     // Initialize tracing subscriber for logging
     tracing_subscriber::fmt().compact().init();
 
     // Load configuration from environment
-    let config = match Config::from_env() {
-        Ok(cfg) => Arc::new(cfg),
-        Err(e) => {
-            error!("Failed to load configuration: {e}");
-            return;
-        }
-    };
+    let config = Arc::new(Config::from_env()?);
 
     // Channel to signal shutdown to background tasks
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
@@ -51,6 +44,7 @@ async fn main() {
         on_error: |error: FrameworkError<'_, Data, Error>| {
             Box::pin(async move {
                 match error {
+                    #[allow(clippy::panic)]
                     FrameworkError::Setup { error, .. } => {
                         error!(?error, "Failed to start bot");
                         panic!("Failed to start bot: {error:?}");
@@ -79,8 +73,9 @@ async fn main() {
             Box::pin(async move {
                 // Register commands
                 let num_commands = framework.options().commands.len();
-                if config_for_setup.register_guild_commands && config_for_setup.guild_id.is_some() {
-                    let guild_id = config_for_setup.guild_id.unwrap();
+                if config_for_setup.register_guild_commands
+                    && let Some(guild_id) = config_for_setup.guild_id
+                {
                     poise::builtins::register_in_guild(ctx, &framework.options().commands, guild_id).await?;
                     info!("Registered {num_commands} guild slash commands");
                 } else {
@@ -105,13 +100,11 @@ async fn main() {
     let mut client = ClientBuilder::new(&config.discord_token, intents)
         .framework(framework)
         .await
-        .expect("Failed to create client");
+        .context("Failed to create Discord client")?;
 
     tokio::select! {
         result = client.start() => {
-            if let Err(err) = result {
-                error!("Client error: {err}");
-            }
+            result.context("Client error")?;
         }
         _ = tokio::signal::ctrl_c() => {
             info!("Received CTRL+C, shutting down gracefully...");
@@ -119,4 +112,6 @@ async fn main() {
             client.shard_manager.shutdown_all().await;
         }
     }
+
+    Ok(())
 }

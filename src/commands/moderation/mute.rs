@@ -107,7 +107,7 @@ async fn do_mute(
 
     match ctx
         .guild_id()
-        .unwrap()
+        .context("guild_id missing in guild-only command")?
         .edit_member(
             ctx,
             member.user.id,

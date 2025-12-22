@@ -2,6 +2,7 @@ use crate::{Data, Error};
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use serenity::Member;
+use url::Url;
 
 #[derive(serde::Serialize)]
 struct UserJoinedParams {
@@ -9,16 +10,9 @@ struct UserJoinedParams {
 }
 
 /// Notify backend of user join
-pub async fn member_add_handler(data: &Data, member: &Member) -> Result<(), Error> {
-    let token = data
-        .config
-        .backend_token
-        .as_ref()
-        .expect("backend_token is always Some here");
-    let api_base = data.config.api_base.as_ref().expect("api_base is always Some here");
-
+pub async fn member_add_handler(data: &Data, member: &Member, token: &str, api_base: &Url) -> Result<(), Error> {
     data.http_client
-        .post(api_base.join("discord/userJoined").expect("failed to join URL path"))
+        .post(api_base.join("discord/userJoined").context("failed to join URL path")?)
         .query(&UserJoinedParams { id: member.user.id })
         .header("Authorization", token)
         .send()

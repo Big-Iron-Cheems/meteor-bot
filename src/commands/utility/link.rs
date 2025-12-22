@@ -71,7 +71,11 @@ async fn link_discord_account(ctx: &Ctx<'_>, user_id: &str, token: &str) -> Resu
     let resp = ctx
         .data()
         .http_client
-        .post(api_base.join("account/linkDiscord").expect("failed to join URL path"))
+        .post(
+            api_base
+                .join("account/linkDiscord")
+                .context("failed to join URL path")?,
+        )
         .header("Authorization", backend_token)
         .query(&LinkDiscordParams { id: user_id, token })
         .send()

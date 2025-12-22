@@ -4,7 +4,7 @@ use serde_with::DisplayFromStr;
 use serenity::all::{ChannelId, EmojiId, GuildId};
 use tracing::info;
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::unreadable_literal)]
 pub mod constants {
     /// Purple theme color
     pub const EMBED_COLOR: u32 = 0x913de2;
@@ -27,7 +27,7 @@ pub struct Config {
     pub backend_token: Option<String>,
     /// Discord guild ID for guild-specific commands (optional)
     pub guild_id: Option<GuildId>,
-    /// If true, register commands in the guild specified by guild_id. Otherwise, register globally.
+    /// If true, register commands in the guild specified by `guild_id`. Otherwise, register globally.
     #[serde(default)]
     pub register_guild_commands: bool,
     /// Cope emoji ID (optional)
@@ -36,7 +36,7 @@ pub struct Config {
     pub member_count_id: Option<ChannelId>,
     /// Download count channel ID (optional)
     pub download_count_id: Option<ChannelId>,
-    /// UptimeRobot URL (optional)
+    /// `UptimeRobot` URL (optional)
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub uptime_url: Option<url::Url>,
 }

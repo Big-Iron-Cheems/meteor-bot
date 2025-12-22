@@ -21,22 +21,30 @@ pub async fn event_handler(
             log_err("ready_handler", ready::ready_handler(ctx, data)).await;
         }
         FullEvent::GuildMemberAddition { new_member } => {
-            if data.config.backend_token.is_some() && data.config.api_base.is_some() {
-                log_err("member_add_handler", member_add::member_add_handler(data, new_member)).await;
+            if let (Some(token), Some(api_base)) = (data.config.backend_token.as_ref(), data.config.api_base.as_ref()) {
+                log_err(
+                    "member_add_handler",
+                    member_add::member_add_handler(data, new_member, token, api_base),
+                )
+                .await;
             }
         }
         FullEvent::GuildMemberRemoval { user, .. } => {
-            if data.config.backend_token.is_some() && data.config.api_base.is_some() {
+            if let (Some(token), Some(api_base)) = (data.config.backend_token.as_ref(), data.config.api_base.as_ref()) {
                 log_err(
                     "member_remove_handler",
-                    member_remove::member_remove_handler(data, user),
+                    member_remove::member_remove_handler(data, user, token, api_base),
                 )
                 .await;
             }
         }
         FullEvent::Message { new_message } => {
-            if data.config.guild_id.is_some() {
-                log_err("message_handler", message::message_handler(ctx, data, new_message)).await;
+            if let Some(guild_id) = data.config.guild_id {
+                log_err(
+                    "message_handler",
+                    message::message_handler(ctx, data, new_message, guild_id),
+                )
+                .await;
             }
         }
         _ => {
@@ -50,9 +58,9 @@ pub async fn event_handler(
 /// Log error from event handlers
 async fn log_err<F, T>(label: &str, fut: F)
 where
-    F: Future<Output = Result<T, Error>>,
+    F: IntoFuture<Output = Result<T, Error>>,
 {
-    if let Err(e) = fut.await {
+    if let Err(e) = fut.into_future().await {
         error!("Error in {label}: {e}");
     }
 }

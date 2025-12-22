@@ -34,7 +34,7 @@ pub async fn stats(
         }
     };
 
-    let gained = stats.joins as i32 - stats.leaves as i32;
+    let gained = stats.joins - stats.leaves;
     let content = format!(
         "**Date**: {}\n**Joins**: {}\n**Leaves**: {}\n**Gained**: {}\n**Downloads**: {}",
         stats.date, stats.joins, stats.leaves, gained, stats.downloads
@@ -51,6 +51,7 @@ pub async fn stats(
 }
 
 fn validate_date(date: Option<String>) -> Result<String, &'static str> {
+    #[allow(clippy::expect_used)]
     static DATE_REGEX: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^\d{2}-\d{2}-\d{4}$").expect("Invalid regex pattern"));
 
@@ -64,8 +65,8 @@ fn validate_date(date: Option<String>) -> Result<String, &'static str> {
 #[derive(serde::Deserialize)]
 struct StatsResponse {
     date: String,
-    joins: u32,
-    leaves: u32,
+    joins: i32,
+    leaves: i32,
     downloads: u32,
 }
 
@@ -73,7 +74,7 @@ async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
     let http_client = &ctx.data().http_client;
     let config = &ctx.data().config;
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
-    let mut url = api_base.join("stats").expect("failed to join URL path");
+    let mut url = api_base.join("stats").context("failed to join URL path")?;
     url.query_pairs_mut().append_pair("date", date);
     let resp = http_client
         .get(url)

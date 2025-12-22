@@ -2,7 +2,7 @@ use crate::{AppCtx, Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
-    CreateEmbed,
+    builder::CreateEmbed,
     model::{guild::Member, user::User},
     prelude::Mentionable,
 };
@@ -35,9 +35,7 @@ pub async fn ban_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
     if let Some(response) = response {
         let delete_messages = response
             .delete_messages
-            .map(|s| s.trim().to_lowercase())
-            .map(|s| s == "true" || s == "yes" || s == "1")
-            .unwrap_or(false);
+            .is_some_and(|s| matches!(s.trim().to_lowercase().as_str(), "true" | "yes" | "1"));
 
         do_ban(app_ctx.into(), &member, response.reason, delete_messages).await?;
     } else {
@@ -68,15 +66,15 @@ pub async fn ban(
 /// Shared ban logic
 async fn do_ban(ctx: Ctx<'_>, member: &Member, reason: Option<String>, delete_messages: bool) -> Result<(), Error> {
     let reason = reason.unwrap_or_else(|| "Reason unspecified".to_string());
-    let delete_message_days = if delete_messages { 1 } else { 0 };
+    let delete_message_days = u8::from(delete_messages);
 
     match ctx
         .guild_id()
-        .unwrap()
+        .context("guild_id missing in guild-only command")?
         .ban_with_reason(ctx, member.user.id, delete_message_days, &reason)
         .await
     {
-        Ok(_) => {
+        Ok(()) => {
             let embed = CreateEmbed::default()
                 .title("Member Banned")
                 .description(format!(

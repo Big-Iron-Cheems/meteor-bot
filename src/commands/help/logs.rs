@@ -1,5 +1,5 @@
-use crate::{config::constants::EMBED_COLOR, Ctx, Error};
-use poise::{serenity_prelude as serenity, CreateReply};
+use crate::{Ctx, Error, config::constants::EMBED_COLOR};
+use poise::{CreateReply, serenity_prelude as serenity};
 use serenity::{
     builder::{CreateActionRow, CreateButton, CreateEmbed},
     model::user::User,

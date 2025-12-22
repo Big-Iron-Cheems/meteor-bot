@@ -1,4 +1,5 @@
 use crate::{Ctx, Error, config::constants::EMBED_COLOR};
+use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
 use rand::Rng;
 use serenity::builder::CreateEmbed;
@@ -14,7 +15,7 @@ pub async fn monkey(ctx: Ctx<'_>) -> Result<(), Error> {
 
     let mut api_url = Url::parse("https://www.placemonkeys.com/")
         .and_then(|base| base.join(&format!("{w}/{h}")))
-        .expect("failed to build placemonkeys URL");
+        .context("failed to build placemonkeys URL")?;
     api_url.query_pairs_mut().append_pair("random", "");
 
     let embed = CreateEmbed::default()

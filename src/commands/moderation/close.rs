@@ -29,7 +29,7 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
         .edit_thread(ctx, EditThread::default().locked(true).archived(true))
         .await
     {
-        Ok(_) => {
+        Ok(()) => {
             // Thread successfully closed - embed was already sent
         }
         Err(e) => {
@@ -48,9 +48,8 @@ pub async fn close(ctx: Ctx<'_>) -> Result<(), Error> {
 
 /// Ensure the command is used in a thread channel, otherwise send an error message.
 async fn is_thread_channel(ctx: Ctx<'_>) -> Result<bool, Error> {
-    let channel = match ctx.guild_channel().await {
-        Some(c) => c,
-        None => return Ok(false),
+    let Some(channel) = ctx.guild_channel().await else {
+        return Ok(false);
     };
 
     match channel.kind {

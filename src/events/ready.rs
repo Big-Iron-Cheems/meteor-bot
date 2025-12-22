@@ -5,12 +5,13 @@ use poise::serenity_prelude as serenity;
 use serde_json::Value;
 use serenity::{
     Context,
-    all::{ActivityData, ChannelId},
+    all::{ActivityData, ChannelId, GuildId},
     builder::EditChannel,
 };
 use std::{sync::Arc, time::Duration};
 use tokio::{net::TcpListener, sync::watch::Receiver, time};
 use tracing::{error, info};
+use url::Url;
 
 static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
 static UPTIME_INTERVAL: Duration = Duration::from_secs(60); // 60 seconds
@@ -19,28 +20,31 @@ pub async fn ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
     let activity = ActivityData::playing("Meteor Client");
     ctx.set_activity(Some(activity));
 
-    if data.config.uptime_url.is_some() {
-        log_err("uptime_handler", uptime_ready_handler(data)).await;
+    if let Some(uptime_url) = data.config.uptime_url.as_ref() {
+        log_err("uptime_handler", uptime_ready_handler(data, uptime_url)).await;
     }
 
-    if data.config.guild_id.is_some()
-        && data.config.member_count_id.is_some()
-        && data.config.download_count_id.is_some()
-    {
-        log_err("info_channel_handler", info_channel_ready_handler(ctx, data)).await;
+    if let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
+        data.config.guild_id,
+        data.config.member_count_id,
+        data.config.download_count_id,
+    ) {
+        log_err(
+            "info_channel_handler",
+            info_channel_ready_handler(ctx, data, guild_id, member_count_id, download_count_id),
+        )
+        .await;
     }
 
-    if data.config.guild_id.is_some() {
-        log_err("metrics_handler", metrics_ready_handler(ctx, data)).await;
+    if let Some(guild_id) = data.config.guild_id {
+        log_err("metrics_handler", metrics_ready_handler(ctx, data, guild_id)).await;
     }
 
     Ok(())
 }
 
-/// Start uptime pinger task for UptimeRobot
-async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
-    let uptime_url = data.config.uptime_url.as_ref().expect("uptime_url is always Some here");
-
+/// Start uptime pinger task for `UptimeRobot`
+async fn uptime_ready_handler(data: &Data, uptime_url: &Url) -> Result<(), Error> {
     let http_client = data.http_client.clone();
     let shard_runners = data.shard_runners.clone();
     let mut shutdown_rx = data.shutdown_rx.clone();
@@ -88,17 +92,13 @@ async fn uptime_ready_handler(data: &Data) -> Result<(), Error> {
 }
 
 /// Start info channel updater tasks
-async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
-    let member_count_id = data
-        .config
-        .member_count_id
-        .expect("member_count_id is always Some here");
-    let download_count_id = data
-        .config
-        .download_count_id
-        .expect("download_count_id is always Some here");
-
+async fn info_channel_ready_handler(
+    ctx: &Context,
+    data: &Data,
+    guild_id: GuildId,
+    member_count_id: ChannelId,
+    download_count_id: ChannelId,
+) -> Result<(), Error> {
     // Download count updater
     spawn_updater(
         ctx.clone(),
@@ -125,7 +125,7 @@ async fn info_channel_ready_handler(ctx: &Context, data: &Data) -> Result<(), Er
             let ctx = ctx.clone();
             move || {
                 let ctx = ctx.clone();
-                async move { ctx.cache.guild(guild_id).map(|g| g.member_count as i64) }
+                async move { ctx.cache.guild(guild_id).map(|g| g.member_count) }
             }
         },
         data.shutdown_rx.clone(),
@@ -146,7 +146,7 @@ async fn spawn_updater<F, Fut>(
     config: Arc<Config>,
 ) where
     F: FnMut() -> Fut + Send + 'static,
-    Fut: Future<Output = Option<i64>> + Send,
+    Fut: Future<Output = Option<u64>> + Send,
 {
     tokio::spawn(async move {
         let mut interval = time::interval(UPDATE_PERIOD);
@@ -167,7 +167,7 @@ async fn spawn_updater<F, Fut>(
     });
 }
 
-async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: i64, config: &Config) -> Result<(), Error> {
+async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: u64, config: &Config) -> Result<(), Error> {
     let new_name = format!(
         "{}: {}",
         if Some(channel_id) == config.member_count_id {
@@ -199,9 +199,7 @@ struct AppState {
 }
 
 /// Start metrics server for Prometheus
-async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> {
-    let guild_id = data.config.guild_id.expect("guild_id is always Some here");
-
+async fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) -> Result<(), Error> {
     if ctx.cache.guild(guild_id).is_none() {
         info!("Guild not found in cache, metrics server will not be started");
         return Ok(());
@@ -236,21 +234,21 @@ async fn metrics_ready_handler(ctx: &Context, data: &Data) -> Result<(), Error> 
 }
 
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
-    let guild_id = state.config.guild_id.expect("guild_id is always Some here");
+    let guild_id = state.config.guild_id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let member_count = state.ctx.cache.guild(guild_id).map(|g| g.member_count).unwrap_or(0);
+    let member_count = state.ctx.cache.guild(guild_id).map_or(0, |g| g.member_count);
 
     let response = format!(
         "# HELP meteor_discord_users_total Total number of Discord users in our server\n# TYPE meteor_discord_users_total gauge\nmeteor_discord_users_total {member_count}"
     );
 
-    Ok(Response::builder()
+    Response::builder()
         .header("Content-Type", "text/plain")
         .body(response)
-        .unwrap())
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<i64, Error> {
+async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<u64, Error> {
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
     let url = api_base
         .join("stats")
@@ -265,26 +263,36 @@ async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> R
         .await
         .context("Failed to decode download stats response")?;
     let downloads = stats["downloads"]
-        .as_f64()
+        .as_u64()
         .context("Failed to parse downloads as number")?;
-    Ok(downloads as i64)
+    Ok(downloads)
 }
 
-fn format_long(value: i64) -> String {
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
+fn format_long(value: u64) -> String {
+    const SUFFIXES: &[&str] = &["k", "m", "b", "t"];
+
     if value < 1000 {
         return value.to_string();
     }
 
-    let suffixes = ["k", "m", "b", "t"];
-    let exponent = ((value as f64).log10() / 3.0).floor() as usize;
-    let exponent = exponent.min(suffixes.len());
+    let value_f = value as f64;
+    let exponent = ((value_f.log10() / 3.0).floor() as usize).min(SUFFIXES.len() - 1);
+    let divisor = 1000_f64.powi(exponent as i32);
+    let scaled = value_f / divisor;
 
-    if exponent == 0 {
-        return value.to_string();
+    // trim trailing zeros
+    let mut s = format!("{scaled:.2}");
+    if s.ends_with("00") {
+        s.truncate(s.len() - 3);
+    } else if s.ends_with('0') {
+        s.truncate(s.len() - 1);
     }
 
-    let base = 1000_i64.pow(exponent as u32) as f64;
-    let first = value as f64 / base;
-
-    format!("{:.2}{}", first, suffixes[exponent - 1])
+    format!("{}{}", s, SUFFIXES[exponent - 1])
 }

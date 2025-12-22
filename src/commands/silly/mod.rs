@@ -17,6 +17,6 @@ async fn fetch_image_url(url: url::Url, json_path: &str) -> anyhow::Result<Strin
 
     json.pointer(&format!("/{}", json_path.replace('.', "/")))
         .and_then(|u| u.as_str())
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .ok_or_else(|| anyhow::anyhow!("Image URL not found in response"))
 }
