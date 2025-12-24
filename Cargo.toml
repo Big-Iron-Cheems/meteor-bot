@@ -2,6 +2,12 @@
 name = "meteor-bot"
 version = "0.1.0"
 edition = "2024"
+description = "Meteor's Discord bot."
+authors = ["Big Iron"]
+repository = "https://github.com/MeteorDevelopment/meteor-bot"
+license = "GPL-3.0-only"
+keywords = ["discord", "discord-bot", "poise", "bot"]
+categories = ["network-programming"]
 
 [dependencies]
 anyhow = "1.0"
