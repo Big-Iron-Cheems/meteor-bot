@@ -18,6 +18,7 @@ type Error = anyhow::Error;
 type Ctx<'a> = poise::Context<'a, Data, Error>;
 type AppCtx<'a> = poise::ApplicationContext<'a, Data, Error>;
 
+#[derive(Debug, Clone)]
 pub struct Data {
     /// Bot configuration
     pub config: Arc<Config>,

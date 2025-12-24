@@ -4,8 +4,8 @@ use axum::{Router, extract::State, http::StatusCode, response::Response, routing
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
 use serenity::{ActivityData, ChannelId, Context, EditChannel, GuildId};
-use std::{sync::Arc, time::Duration};
-use tokio::{net::TcpListener, sync::watch::Receiver, time};
+use std::time::Duration;
+use tokio::{net::TcpListener, time};
 use tracing::{error, info};
 use url::Url;
 
@@ -16,7 +16,7 @@ pub fn ready_handler(ctx: &Context, data: &Data) {
     ctx.set_activity(Some(ActivityData::playing("Meteor Client")));
 
     if let Some(uptime_url) = data.config.uptime_url.as_ref() {
-        uptime_ready_handler(data, uptime_url);
+        uptime_ready_handler(data.clone(), uptime_url.clone());
     }
 
     if let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
@@ -33,26 +33,20 @@ pub fn ready_handler(ctx: &Context, data: &Data) {
 }
 
 /// Uptime pinger task
-fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
-    let http_client = data.http_client.clone();
-    let shard_runners = data.shard_runners.clone();
-    let mut shutdown_rx = data.shutdown_rx.clone();
-    let uptime_url = uptime_url.clone();
-
+fn uptime_ready_handler(data: Data, uptime_url: Url) {
     tokio::spawn(async move {
         let mut interval = time::interval(UPTIME_INTERVAL);
+        let mut shutdown_rx = data.shutdown_rx.clone();
 
         loop {
             tokio::select! {
                 _ = interval.tick() => {
                     // Compute average latency across shards
-                    let latency_ms = {
-                        let (sum, count) = shard_runners.lock().await
-                            .values()
-                            .filter_map(|r| r.latency.map(|d| d.as_millis()))
-                            .fold((0u128, 0u128), |(sum, count), latency| (sum + latency, count + 1));
-                        if count == 0 { 0 } else { sum / count }
-                    };
+                    let (sum, count) = data.shard_runners.lock().await
+                        .values()
+                        .filter_map(|r| r.latency.map(|d| d.as_millis()))
+                        .fold((0u128, 0u128), |(sum, count), latency| (sum + latency, count + 1));
+                    let latency_ms = if count == 0 { 0 } else { sum / count };
 
                     let url = if uptime_url.as_str().ends_with("ping=") {
                         format!("{uptime_url}{latency_ms}")
@@ -60,7 +54,7 @@ fn uptime_ready_handler(data: &Data, uptime_url: &Url) {
                         uptime_url.to_string()
                     };
 
-                    if let Err(e) = http_client.get(url).send().await {
+                    if let Err(e) = data.http_client.get(url).send().await {
                         error!("Failed to send uptime request: {e}");
                     }
                 }
@@ -86,16 +80,13 @@ fn info_channel_ready_handler(
         ctx.clone(),
         download_count_id,
         {
-            let config = data.config.clone();
-            let http_client = data.http_client.clone();
+            let data = data.clone();
             move || {
-                let config = config.clone();
-                let http_client = http_client.clone();
-                async move { get_download_count(&http_client, &config).await.ok() }
+                let data = data.clone();
+                async move { get_download_count(&data.http_client, &data.config).await.ok() }
             }
         },
-        data.shutdown_rx.clone(),
-        data.config.clone(),
+        data.clone(),
     );
 
     // Member count updater
@@ -109,32 +100,27 @@ fn info_channel_ready_handler(
                 async move { ctx.cache.guild(guild_id).map(|g| g.member_count) }
             }
         },
-        data.shutdown_rx.clone(),
-        data.config.clone(),
+        data.clone(),
     );
 
     info!("Updating info channels every {} seconds", UPDATE_PERIOD.as_secs());
 }
 
 /// Spawn periodic updater task
-fn spawn_updater<F, Fut>(
-    ctx: Context,
-    channel_id: ChannelId,
-    mut get_count: F,
-    mut shutdown_rx: Receiver<bool>,
-    config: Arc<Config>,
-) where
+fn spawn_updater<F, Fut>(ctx: Context, channel_id: ChannelId, mut get_count: F, data: Data)
+where
     F: FnMut() -> Fut + Send + 'static,
     Fut: Future<Output = Option<u64>> + Send,
 {
     tokio::spawn(async move {
         let mut interval = time::interval(UPDATE_PERIOD);
+        let mut shutdown_rx = data.shutdown_rx.clone();
 
         loop {
             tokio::select! {
                 _ = interval.tick() => {
                     if let Some(count) = get_count().await &&
-                        let Err(e) = update_channel_name(&ctx, channel_id, count, &config).await
+                        let Err(e) = update_channel_name(&ctx, channel_id, count, &data.config).await
                     {
                         error!("Failed to update channel {:?}: {e}", channel_id.get());
                     }
@@ -177,7 +163,7 @@ async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: u64, c
 #[derive(Clone)]
 struct AppState {
     ctx: Context,
-    config: Arc<Config>,
+    data: Data,
 }
 
 /// Metrics server
@@ -188,7 +174,7 @@ fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
 
     let app_state = AppState {
         ctx: ctx.clone(),
-        config: data.config.clone(),
+        data: data.clone(),
     };
 
     let app = Router::new()
@@ -220,7 +206,7 @@ fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
 
 /// Prometheus handler
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
-    let guild_id = state.config.guild_id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let guild_id = state.data.config.guild_id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
     let member_count = state.ctx.cache.guild(guild_id).map_or(0, |g| g.member_count);
     let response = format!(
         "# HELP meteor_discord_users_total Total number of Discord users in our server\n\
