@@ -39,7 +39,7 @@ pub async fn mute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
             .map_err(|_| anyhow::anyhow!("Invalid duration format"))?;
         do_mute(app_ctx.into(), &member, duration, response.reason).await?;
     } else {
-        poise::Context::Application(app_ctx)
+        app_ctx
             .send(CreateReply::default().content("Mute cancelled.").ephemeral(true))
             .await?;
     }

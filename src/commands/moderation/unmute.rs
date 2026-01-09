@@ -28,7 +28,7 @@ pub async fn unmute_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
     if let Some(response) = response {
         do_unmute(app_ctx.into(), &member, response.reason).await?;
     } else {
-        poise::Context::Application(app_ctx)
+        app_ctx
             .send(CreateReply::default().content("Unmute cancelled.").ephemeral(true))
             .await?;
     }

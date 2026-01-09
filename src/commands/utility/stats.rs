@@ -1,9 +1,7 @@
 use crate::{Ctx, Error, config::constants::EMBED_COLOR};
 use anyhow::Context;
 use poise::{CreateReply, serenity_prelude as serenity};
-use regex::Regex;
 use serenity::CreateEmbed;
-use std::sync::LazyLock;
 use tracing::error;
 
 /// Shows various stats about Meteor
@@ -14,8 +12,9 @@ pub async fn stats(
 ) -> Result<(), Error> {
     let date = match validate_date(date) {
         Ok(d) => d,
-        Err(msg) => {
-            ctx.send(CreateReply::default().content(msg).ephemeral(true)).await?;
+        Err(e) => {
+            ctx.send(CreateReply::default().content(e.to_string()).ephemeral(true))
+                .await?;
             return Ok(());
         }
     };
@@ -50,16 +49,15 @@ pub async fn stats(
     Ok(())
 }
 
-fn validate_date(date: Option<String>) -> Result<String, &'static str> {
-    #[allow(clippy::expect_used)]
-    static DATE_REGEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^\d{2}-\d{2}-\d{4}$").expect("Invalid regex pattern"));
-
-    match date {
-        Some(d) if DATE_REGEX.is_match(&d) => Ok(d),
-        Some(_) => Err("Invalid date format. Please use DD-MM-YYYY."),
-        None => Ok(chrono::Local::now().format("%d-%m-%Y").to_string()),
-    }
+fn validate_date(date: Option<String>) -> Result<String, Error> {
+    date.map_or_else(
+        || Ok(chrono::Local::now().format("%d-%m-%Y").to_string()),
+        |d| {
+            chrono::NaiveDate::parse_from_str(&d, "%d-%m-%Y")
+                .map(|_| d)
+                .context("Invalid date format. Please use DD-MM-YYYY.")
+        },
+    )
 }
 
 #[derive(serde::Deserialize)]
@@ -76,13 +74,15 @@ async fn fetch_stats(ctx: Ctx<'_>, date: &str) -> Result<StatsResponse, Error> {
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
     let mut url = api_base.join("stats").context("failed to join URL path")?;
     url.query_pairs_mut().append_pair("date", date);
-    let resp = http_client
+
+    http_client
         .get(url)
         .send()
         .await
-        .context("Failed to send stats request")?;
-    let resp = resp
+        .context("Failed to send stats request")?
         .error_for_status()
-        .context("API returned error status for stats request")?;
-    resp.json().await.context("Failed to decode stats response")
+        .context("API returned error status for stats request")?
+        .json()
+        .await
+        .context("Failed to decode stats response")
 }

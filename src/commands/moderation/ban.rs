@@ -35,7 +35,7 @@ pub async fn ban_menu(app_ctx: AppCtx<'_>, user: User) -> Result<(), Error> {
 
         do_ban(app_ctx.into(), &member, response.reason, delete_messages).await?;
     } else {
-        poise::Context::Application(app_ctx)
+        app_ctx
             .send(CreateReply::default().content("Ban cancelled.").ephemeral(true))
             .await?;
     }
