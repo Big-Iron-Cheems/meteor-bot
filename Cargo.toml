@@ -17,12 +17,12 @@ dotenvy = "0.15"
 envy = "0.4"
 humantime = "2.3"
 poise = "0.6"
-rand = "0.9"
+rand = "0.10"
 reqwest = { version = "0.13", default-features = false, features = ["query", "json", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.16"
-tokio = { version = "1.49", features = ["macros", "rt-multi-thread", "signal"] }
+serde_with = "3.21"
+tokio = { version = "1.52", features = ["macros", "rt-multi-thread", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
