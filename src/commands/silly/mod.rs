@@ -10,13 +10,19 @@ pub use dog::dog;
 pub use monkey::monkey;
 pub use panda::panda;
 
-/// Fetches an image URL from a given API endpoint and JSON path
-async fn fetch_image_url(url: url::Url, json_path: &str) -> anyhow::Result<String> {
-    let resp = reqwest::get(url).await?;
-    let json = resp.json::<serde_json::Value>().await?;
+/// Fetch an image URL from a JSON API response.
+///
+/// `json_pointer` must be a valid JSON Pointer (RFC 6901): a slash-delimited path,
+///  e.g. `"/data/url"` or `"/link"`. The leading slash is required.
+pub(super) async fn fetch_image_url(
+    client: &reqwest::Client,
+    url: url::Url,
+    json_pointer: &str,
+) -> anyhow::Result<String> {
+    let json = client.get(url).send().await?.json::<serde_json::Value>().await?;
 
-    json.pointer(&format!("/{}", json_path.replace('.', "/")))
-        .and_then(|u| u.as_str())
+    json.pointer(json_pointer)
+        .and_then(|v| v.as_str())
         .map(ToString::to_string)
-        .ok_or_else(|| anyhow::anyhow!("Image URL not found in response"))
+        .ok_or_else(|| anyhow::anyhow!("Image URL not found at pointer '{json_pointer}'"))
 }

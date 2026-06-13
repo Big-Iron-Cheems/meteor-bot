@@ -54,54 +54,28 @@ impl Config {
 
     /// Log the status of optional features based on what's actually configured
     fn log_feature_status(&self) {
-        if self.api_base.is_none() {
-            info!("API base URL not set, backend integration will be disabled");
-        } else {
-            info!("API base URL configured: backend integration enabled");
+        match &self.api_base {
+            None => info!("API_BASE not set: backend integration disabled"),
+            Some(u) => info!("API_BASE={u}: backend integration enabled"),
         }
-
         if self.backend_token.is_none() {
-            info!("Backend token not set, user join/leave events will not be reported");
-        } else {
-            info!("Backend token configured: user join/leave events will be reported");
+            info!("BACKEND_TOKEN not set: join/leave events will not be reported");
         }
-
         if self.guild_id.is_none() {
-            info!("Guild ID not configured, skipping info channel updates");
-        } else {
-            info!("Guild ID configured: info channel updates enabled");
+            info!("GUILD_ID not set: info channels and metrics disabled");
         }
-
         if self.cope_nn_id.is_none() {
-            info!("Cope emoji ID not set, defaulting to wave emoji");
-        } else {
-            info!("Cope emoji ID configured");
+            info!("COPE_NN_ID not set: defaulting to wave emoji");
         }
-
-        if self.member_count_id.is_none() {
-            info!("Member count channel ID not set, info channels will not be updated");
-        } else {
-            info!("Member count channel ID configured");
-        }
-
-        if self.download_count_id.is_none() {
-            info!("Download count channel ID not set, info channels will not be updated");
-        } else {
-            info!("Download count channel ID configured");
-        }
-
         if self.uptime_url.is_none() {
-            info!("Uptime URL not set, uptime monitoring will be disabled");
-        } else {
-            info!("Uptime URL configured: uptime monitoring enabled");
+            info!("UPTIME_URL not set: uptime monitoring disabled");
         }
-
         info!(
-            "Guild commands will be registered: {}",
+            "Command registration: {}",
             if self.register_guild_commands {
-                "locally"
+                "guild"
             } else {
-                "globally"
+                "global"
             }
         );
     }

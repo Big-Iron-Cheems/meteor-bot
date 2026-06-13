@@ -17,8 +17,7 @@ pub async fn panda(ctx: Ctx<'_>) -> Result<(), Error> {
     let api_url = Url::parse("https://some-random-api.com/img/")
         .and_then(|base| base.join(animal))
         .context("failed to build panda API URL")?;
-
-    if let Ok(url) = fetch_image_url(api_url, "link").await {
+    if let Ok(url) = fetch_image_url(&ctx.data().http_client, api_url, "/link").await {
         let embed = CreateEmbed::default().title(title).color(EMBED_COLOR).image(url);
         ctx.send(CreateReply::default().embed(embed)).await?;
     } else {

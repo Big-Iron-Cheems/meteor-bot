@@ -9,7 +9,7 @@ use url::Url;
 pub async fn capybara(ctx: Ctx<'_>) -> Result<(), Error> {
     let api_url = Url::parse_with_params("https://api.capy.lol/v1/capybara", [("json", "true")])
         .context("failed to parse capybara API URL")?;
-    if let Ok(url) = fetch_image_url(api_url, "data/url").await {
+    if let Ok(url) = fetch_image_url(&ctx.data().http_client, api_url, "/data/url").await {
         let embed = CreateEmbed::default().title("Capybara!").color(EMBED_COLOR).image(url);
         ctx.send(CreateReply::default().embed(embed)).await?;
     } else {

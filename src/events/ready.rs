@@ -6,17 +6,17 @@ use serde_json::Value;
 use serenity::{ActivityData, ChannelId, Context, EditChannel, GuildId};
 use std::time::Duration;
 use tokio::{net::TcpListener, time};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use url::Url;
 
-static UPDATE_PERIOD: Duration = Duration::from_secs(6 * 60); // 6 minutes
-static UPTIME_INTERVAL: Duration = Duration::from_secs(60); // 60 seconds
+static UPDATE_PERIOD: Duration = Duration::from_mins(6);
+static UPTIME_INTERVAL: Duration = Duration::from_mins(1);
 
 pub fn ready_handler(ctx: &Context, data: &Data) {
     ctx.set_activity(Some(ActivityData::playing("Meteor Client")));
 
-    if let Some(uptime_url) = data.config.uptime_url.as_ref() {
-        uptime_ready_handler(data.clone(), uptime_url.clone());
+    if let Some(uptime_url) = data.config.uptime_url.clone() {
+        spawn_uptime_task(data.clone(), uptime_url);
     }
 
     if let (Some(guild_id), Some(member_count_id), Some(download_count_id)) = (
@@ -24,29 +24,23 @@ pub fn ready_handler(ctx: &Context, data: &Data) {
         data.config.member_count_id,
         data.config.download_count_id,
     ) {
-        info_channel_ready_handler(ctx, data, guild_id, member_count_id, download_count_id);
+        spawn_info_channel_tasks(ctx, data, guild_id, member_count_id, download_count_id);
     }
 
     if let Some(guild_id) = data.config.guild_id {
-        metrics_ready_handler(ctx, data, guild_id);
+        spawn_metrics_server(ctx, data, guild_id);
     }
 }
 
 /// Uptime pinger task
-fn uptime_ready_handler(data: Data, uptime_url: Url) {
+fn spawn_uptime_task(data: Data, uptime_url: Url) {
     tokio::spawn(async move {
         let mut interval = time::interval(UPTIME_INTERVAL);
-        let mut shutdown_rx = data.shutdown_rx.clone();
 
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    // Compute average latency across shards
-                    let (sum, count) = data.shard_runners.lock().await
-                        .values()
-                        .filter_map(|r| r.latency.map(|d| d.as_millis()))
-                        .fold((0u128, 0u128), |(sum, count), latency| (sum + latency, count + 1));
-                    let latency_ms = if count == 0 { 0 } else { sum / count };
+                    let latency_ms = compute_avg_latency(&data).await;
 
                     let url = if uptime_url.as_str().ends_with("ping=") {
                         format!("{uptime_url}{latency_ms}")
@@ -58,8 +52,8 @@ fn uptime_ready_handler(data: Data, uptime_url: Url) {
                         error!("Failed to send uptime request: {e}");
                     }
                 }
-                _ = shutdown_rx.changed() => {
-                    info!("uptime_ready_handler shutting down...");
+                () = data.cancel.cancelled() => {
+                    info!("Uptime task shutting down");
                     break;
                 }
             }
@@ -67,18 +61,30 @@ fn uptime_ready_handler(data: Data, uptime_url: Url) {
     });
 }
 
-/// Info channel updater tasks
-fn info_channel_ready_handler(
+/// Compute average latency across shards
+async fn compute_avg_latency(data: &Data) -> u128 {
+    let (sum, count) = data
+        .shard_runners
+        .lock()
+        .await
+        .values()
+        .filter_map(|r| r.latency.map(|d| d.as_millis()))
+        .fold((0u128, 0u128), |(s, c), l| (s + l, c + 1));
+    sum.checked_div(count).map_or(0, |avg| avg)
+}
+
+/// Info channel tasks
+fn spawn_info_channel_tasks(
     ctx: &Context,
     data: &Data,
     guild_id: GuildId,
     member_count_id: ChannelId,
     download_count_id: ChannelId,
 ) {
-    // Download count updater
-    spawn_updater(
+    spawn_channel_updater(
         ctx.clone(),
         download_count_id,
+        ChannelRole::Downloads,
         {
             let data = data.clone();
             move || {
@@ -89,10 +95,10 @@ fn info_channel_ready_handler(
         data.clone(),
     );
 
-    // Member count updater
-    spawn_updater(
+    spawn_channel_updater(
         ctx.clone(),
         member_count_id,
+        ChannelRole::Members,
         {
             let ctx = ctx.clone();
             move || {
@@ -106,27 +112,47 @@ fn info_channel_ready_handler(
     info!("Updating info channels every {} seconds", UPDATE_PERIOD.as_secs());
 }
 
+/// The semantic role of an info channel, used to derive its display label.
+#[derive(Clone, Copy)]
+enum ChannelRole {
+    Members,
+    Downloads,
+}
+
+impl ChannelRole {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Members => "Members",
+            Self::Downloads => "Downloads",
+        }
+    }
+}
+
 /// Spawn periodic updater task
-fn spawn_updater<F, Fut>(ctx: Context, channel_id: ChannelId, mut get_count: F, data: Data)
+fn spawn_channel_updater<F, Fut>(ctx: Context, channel_id: ChannelId, role: ChannelRole, mut get_count: F, data: Data)
 where
     F: FnMut() -> Fut + Send + 'static,
     Fut: Future<Output = Option<u64>> + Send,
 {
     tokio::spawn(async move {
         let mut interval = time::interval(UPDATE_PERIOD);
-        let mut shutdown_rx = data.shutdown_rx.clone();
 
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    if let Some(count) = get_count().await &&
-                        let Err(e) = update_channel_name(&ctx, channel_id, count, &data.config).await
-                    {
-                        error!("Failed to update channel {:?}: {e}", channel_id.get());
+                    match get_count().await {
+                        Some(count) => {
+                            if let Err(e) = update_channel_name(&ctx, channel_id, role, count).await {
+                                error!("Failed to update channel {}: {e}", channel_id.get());
+                            }
+                        }
+                        None => {
+                            warn!("Could not retrieve count for channel {}", channel_id.get());
+                        }
                     }
                 }
-                _ = shutdown_rx.changed() => {
-                    info!("info_channel_ready_handler (ID: {:?}) shutting down...", channel_id.get());
+                () = data.cancel.cancelled() => {
+                    info!("Info channel updater ({}) shutting down", channel_id.get());
                     break;
                 }
             }
@@ -135,23 +161,15 @@ where
 }
 
 /// Update channel name
-async fn update_channel_name(ctx: &Context, channel_id: ChannelId, count: u64, config: &Config) -> Result<(), Error> {
-    let new_name = format!(
-        "{}: {}",
-        if Some(channel_id) == config.member_count_id {
-            "Members"
-        } else {
-            "Downloads"
-        },
-        format_long(count)
-    );
+async fn update_channel_name(ctx: &Context, channel_id: ChannelId, role: ChannelRole, count: u64) -> Result<(), Error> {
+    let new_name = format!("{}: {}", role.label(), format_long(count));
 
     if channel_id
         .to_channel(ctx)
         .await?
         .guild()
-        .filter(|c| c.name != new_name)
-        .is_some()
+        .as_ref()
+        .is_some_and(|c| c.name != new_name)
     {
         channel_id.edit(ctx, EditChannel::new().name(new_name)).await?;
     }
@@ -167,7 +185,7 @@ struct AppState {
 }
 
 /// Metrics server
-fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
+fn spawn_metrics_server(ctx: &Context, data: &Data, guild_id: GuildId) {
     if ctx.cache.guild(guild_id).is_none() {
         return;
     }
@@ -181,7 +199,7 @@ fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
         .route("/metrics", get(prometheus_metrics))
         .with_state(app_state);
 
-    let mut shutdown_rx = data.shutdown_rx.clone();
+    let cancel = data.cancel.clone();
 
     tokio::spawn(async move {
         let listener = match TcpListener::bind("0.0.0.0:9400").await {
@@ -194,8 +212,8 @@ fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
         info!("Providing metrics on :9400/metrics");
         if let Err(e) = axum::serve(listener, app)
             .with_graceful_shutdown(async move {
-                let _ = shutdown_rx.changed().await;
-                info!("metrics_ready_handler shutting down...");
+                cancel.cancelled().await;
+                info!("Metrics server shutting down");
             })
             .await
         {
@@ -208,7 +226,7 @@ fn metrics_ready_handler(ctx: &Context, data: &Data, guild_id: GuildId) {
 async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<String>, StatusCode> {
     let guild_id = state.data.config.guild_id.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
     let member_count = state.ctx.cache.guild(guild_id).map_or(0, |g| g.member_count);
-    let response = format!(
+    let body = format!(
         "# HELP meteor_discord_users_total Total number of Discord users in our server\n\
          # TYPE meteor_discord_users_total gauge\n\
          meteor_discord_users_total {member_count}"
@@ -216,7 +234,7 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 
     Response::builder()
         .header("Content-Type", "text/plain")
-        .body(response)
+        .body(body)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
@@ -224,38 +242,31 @@ async fn prometheus_metrics(State(state): State<AppState>) -> Result<Response<St
 async fn get_download_count(http_client: &reqwest::Client, config: &Config) -> Result<u64, Error> {
     let api_base = config.api_base.as_ref().context("API base URL not configured")?;
     let url = api_base.join("stats")?;
-    let response = http_client.get(url).send().await?;
-    let stats = response.json::<Value>().await?;
-    let downloads = stats["downloads"].as_u64().context("Failed to parse downloads")?;
-    Ok(downloads)
+    let stats = http_client.get(url).send().await?.json::<Value>().await?;
+    stats["downloads"].as_u64().context("Failed to parse downloads")
 }
 
-/// Format large numbers
-#[allow(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_sign_loss
-)]
+/// Format a large number with a k/m/b/t suffix and up to one decimal place
 fn format_long(value: u64) -> String {
-    const SUFFIXES: &[&str] = &["k", "m", "b", "t"];
+    const THRESHOLDS: &[(u64, &str)] = &[
+        (1_000_000_000_000, "t"),
+        (1_000_000_000, "b"),
+        (1_000_000, "m"),
+        (1_000, "k"),
+    ];
 
-    if value < 1000 {
-        return value.to_string();
+    for &(threshold, suffix) in THRESHOLDS {
+        if value >= threshold {
+            let scaled = value / (threshold / 10);
+            let integer = scaled / 10;
+            let frac = scaled % 10;
+            return if frac == 0 {
+                format!("{integer}{suffix}")
+            } else {
+                format!("{integer}.{frac}{suffix}")
+            };
+        }
     }
 
-    let value_f = value as f64;
-    let exponent = ((value_f.log10() / 3.0).floor() as usize).min(SUFFIXES.len() - 1);
-    let divisor = 1000_f64.powi(exponent as i32);
-    let scaled = value_f / divisor;
-
-    // trim trailing zeros
-    let mut s = format!("{scaled:.2}");
-    if s.ends_with("00") {
-        s.truncate(s.len() - 3);
-    } else if s.ends_with('0') {
-        s.truncate(s.len() - 1);
-    }
-
-    format!("{}{}", s, SUFFIXES[exponent - 1])
+    value.to_string()
 }

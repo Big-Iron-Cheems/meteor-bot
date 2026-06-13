@@ -7,7 +7,8 @@ use anyhow::Context;
 use poise::{FrameworkError, serenity_prelude as serenity};
 use serenity::{ClientBuilder, GatewayIntents, ShardId, ShardRunnerInfo};
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{Mutex, watch, watch::Receiver};
+use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 mod commands;
@@ -26,8 +27,8 @@ pub struct Data {
     pub http_client: reqwest::Client,
     /// Shard runners information
     pub shard_runners: Arc<Mutex<HashMap<ShardId, ShardRunnerInfo>>>,
-    /// Shutdown signal for background tasks
-    pub shutdown_rx: Receiver<bool>,
+    /// Token cancelled on CTRL+C to signal all background tasks to stop
+    pub cancel: CancellationToken,
 }
 
 #[tokio::main]
@@ -37,15 +38,16 @@ async fn main() -> Result<(), Error> {
 
     // Load configuration from environment
     let config = Arc::new(Config::from_env()?);
-
-    // Channel to signal shutdown to background tasks
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let cancel = CancellationToken::new();
 
     let options = poise::FrameworkOptions {
         commands: commands::get_commands(),
         on_error: |error: FrameworkError<'_, Data, Error>| {
             Box::pin(async move {
                 match error {
+                    // Panicking on setup failure is intentional:
+                    // the bot cannot function without a valid gateway connection,
+                    // so there is nothing to recover.
                     #[allow(clippy::panic)]
                     FrameworkError::Setup { error, .. } => {
                         error!(?error, "Failed to start bot");
@@ -67,6 +69,7 @@ async fn main() -> Result<(), Error> {
     };
 
     let config_for_setup = Arc::clone(&config);
+    let cancel_for_setup = cancel.clone();
     let framework = poise::Framework::builder()
         .options(options)
         .setup(move |ctx, _ready, framework| {
@@ -84,14 +87,12 @@ async fn main() -> Result<(), Error> {
                 }
 
                 // Initialize shared data
-                let data = Data {
+                Ok(Data {
                     config: config_for_setup,
                     http_client: reqwest::Client::new(),
                     shard_runners: framework.shard_manager().runners.clone(),
-                    shutdown_rx,
-                };
-
-                Ok(data)
+                    cancel: cancel_for_setup,
+                })
             })
         })
         .build();
@@ -108,7 +109,7 @@ async fn main() -> Result<(), Error> {
         }
         _ = tokio::signal::ctrl_c() => {
             info!("Received CTRL+C, shutting down gracefully...");
-            let _ = shutdown_tx.send(true);
+            cancel.cancel();
             client.shard_manager.shutdown_all().await;
         }
     }
